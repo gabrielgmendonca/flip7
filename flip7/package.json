@@ -10,6 +10,11 @@
     "dev:server": "npm run dev --workspace=@flip7/server",
     "dev:client": "npm run dev --workspace=@flip7/client",
     "build": "npm run build --workspaces --if-present",
-    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules"
+    "clean": "rm -rf packages/*/dist packages/*/node_modules node_modules",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
   }
 }
