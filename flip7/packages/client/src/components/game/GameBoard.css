@@ -1,0 +1,125 @@
+.game-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.round-info {
+  display: flex;
+  gap: 1rem;
+  font-size: 1.25rem;
+}
+
+.deck-count {
+  color: var(--color-text-muted);
+  font-size: 1rem;
+}
+
+.leave-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.game-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.opponents-area {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.center-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: var(--color-surface);
+  border-radius: 1rem;
+}
+
+.deck-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deck-label {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.turn-indicator {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.turn-indicator .your-turn {
+  color: var(--color-secondary);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.hit-btn, .pass-btn {
+  padding: 1rem 3rem;
+  font-size: 1.25rem;
+  font-weight: bold;
+}
+
+.hit-btn {
+  background: var(--color-secondary);
+}
+
+.hit-btn:hover {
+  background: #059669;
+}
+
+.my-area {
+  margin-top: auto;
+}
+
+@media (max-width: 768px) {
+  .opponents-area {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hit-btn, .pass-btn {
+    width: 100%;
+  }
+}

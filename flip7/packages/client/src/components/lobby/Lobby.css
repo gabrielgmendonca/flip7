@@ -1,0 +1,129 @@
+.lobby {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.lobby-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.lobby-header h1 {
+  margin-bottom: 1rem;
+}
+
+.room-code-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: var(--color-surface);
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+.room-code-label {
+  color: var(--color-text-muted);
+}
+
+.room-code {
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  color: var(--color-primary);
+}
+
+.lobby-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.players-section h2,
+.settings-section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.player-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-surface);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+}
+
+.player-item.disconnected {
+  opacity: 0.5;
+}
+
+.player-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.host-badge {
+  background: var(--color-warning);
+  color: black;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: bold;
+}
+
+.you-badge {
+  background: var(--color-primary);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: bold;
+}
+
+.kick-btn {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.settings-section {
+  background: var(--color-surface);
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-item input {
+  width: 100px;
+  text-align: center;
+}
+
+.lobby-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+  gap: 1rem;
+}
+
+.lobby-actions button {
+  flex: 1;
+}

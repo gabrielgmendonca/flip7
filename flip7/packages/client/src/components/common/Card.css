@@ -1,0 +1,107 @@
+.game-card {
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+  user-select: none;
+}
+
+.game-card-small {
+  width: 50px;
+  height: 70px;
+  font-size: 1rem;
+}
+
+.game-card-medium {
+  width: 70px;
+  height: 100px;
+  font-size: 1.5rem;
+}
+
+.game-card-large {
+  width: 100px;
+  height: 140px;
+  font-size: 2rem;
+}
+
+.game-card-number {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.game-card-action {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  color: white;
+}
+
+.game-card-modifier {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.game-card-back {
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border: 2px solid #475569;
+  color: #94a3b8;
+}
+
+.game-card-new {
+  animation: cardDraw 0.3s ease-out;
+}
+
+@keyframes cardDraw {
+  0% {
+    transform: scale(0.5) rotate(-10deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px;
+}
+
+.card-value {
+  font-size: inherit;
+}
+
+.card-action {
+  font-size: 0.6em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-modifier-value {
+  font-size: 0.9em;
+}
+
+.card-back-text {
+  font-size: 0.5em;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+
+.card-modifiers {
+  display: flex;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.modifier-badge {
+  background: var(--card-modifier);
+  color: white;
+  font-size: 0.5em;
+  padding: 1px 4px;
+  border-radius: 4px;
+}

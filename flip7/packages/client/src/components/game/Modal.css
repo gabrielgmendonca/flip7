@@ -1,0 +1,134 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: 1rem;
+  padding: 2rem;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  0% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal h2 {
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+}
+
+.modal p {
+  color: var(--color-text-muted);
+  margin-bottom: 1rem;
+}
+
+.modal-card {
+  display: flex;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modal-actions button {
+  flex: 1;
+}
+
+/* Game Over Modal */
+.game-over-modal {
+  max-width: 450px;
+}
+
+.winner-announcement {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.winner-name {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--color-warning);
+}
+
+.winner-label {
+  color: var(--color-text-muted);
+}
+
+.final-standings {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.final-standings h3 {
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.standings-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.standing-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: var(--color-surface-light);
+  border-radius: 0.5rem;
+}
+
+.standing-item.is-winner {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid var(--color-warning);
+}
+
+.standing-item.is-me {
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid var(--color-primary);
+}
+
+.standing-rank {
+  font-weight: bold;
+  color: var(--color-text-muted);
+  width: 1.5rem;
+}
+
+.standing-name {
+  flex: 1;
+}
+
+.standing-score {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
