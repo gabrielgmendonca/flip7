@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { PlayedCardComponent, CardBack } from '../common/Card';
 import { PlayerArea } from './PlayerArea';
 import { Scoreboard } from './Scoreboard';
 import { SecondChanceModal } from './SecondChanceModal';
 import { GameOverModal } from './GameOverModal';
+import { TurnTimer } from './TurnTimer';
 import './GameBoard.css';
+import './Modal.css';
 
 export function GameBoard() {
   const { state, hit, pass, leaveRoom } = useGame();
-  const { gameState, playerId, secondChancePrompt } = state;
+  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer } = state;
+
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   if (!gameState) return null;
 
@@ -20,6 +24,20 @@ export function GameBoard() {
 
   const otherPlayers = gameState.players.filter((p) => p.id !== playerId);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!canAct) return;
+      if (e.key.toLowerCase() === 'h') {
+        hit();
+      } else if (e.key.toLowerCase() === 'p') {
+        pass();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canAct, hit, pass]);
+
   return (
     <div className="game-board">
       <div className="game-header">
@@ -27,7 +45,7 @@ export function GameBoard() {
           <span>Round {gameState.round}</span>
           <span className="deck-count">{gameState.deckCount} cards left</span>
         </div>
-        <button className="secondary leave-btn" onClick={leaveRoom}>
+        <button className="secondary leave-btn" onClick={() => setShowLeaveConfirm(true)}>
           Leave Game
         </button>
       </div>
@@ -40,6 +58,7 @@ export function GameBoard() {
               player={player}
               isCurrentTurn={currentPlayer?.id === player.id}
               isCompact
+              lastDrawnCardId={lastDrawnCard?.playedCard.card.id}
             />
           ))}
         </div>
@@ -52,9 +71,17 @@ export function GameBoard() {
 
           <div className="turn-indicator">
             {gameState.phase === 'PLAYER_TURN' && (
-              <span className={isMyTurn ? 'your-turn' : ''}>
-                {isMyTurn ? "Your Turn!" : `${currentPlayer?.name}'s Turn`}
-              </span>
+              <>
+                <span className={isMyTurn ? 'your-turn' : ''}>
+                  {isMyTurn ? "Your Turn!" : `${currentPlayer?.name}'s Turn`}
+                </span>
+                {turnTimer && (
+                  <TurnTimer
+                    startTime={turnTimer.startTime}
+                    timeoutSeconds={turnTimer.timeoutSeconds}
+                  />
+                )}
+              </>
             )}
             {gameState.phase === 'ROUND_END' && <span>Round Over</span>}
             {gameState.phase === 'AWAITING_SECOND_CHANCE' && (
@@ -64,11 +91,11 @@ export function GameBoard() {
 
           {canAct && (
             <div className="action-buttons">
-              <button className="primary hit-btn" onClick={hit}>
-                HIT
+              <button className="primary hit-btn" onClick={hit} title="Press H">
+                HIT <span className="shortcut-hint">(H)</span>
               </button>
-              <button className="secondary pass-btn" onClick={pass}>
-                PASS
+              <button className="secondary pass-btn" onClick={pass} title="Press P">
+                PASS <span className="shortcut-hint">(P)</span>
               </button>
             </div>
           )}
@@ -80,6 +107,8 @@ export function GameBoard() {
               player={myPlayer}
               isCurrentTurn={isMyTurn}
               isMe
+              lastDrawnCardId={lastDrawnCard?.playedCard.card.id}
+              showBustRisk={canAct}
             />
           </div>
         )}
@@ -90,6 +119,23 @@ export function GameBoard() {
       {secondChancePrompt && <SecondChanceModal duplicateCard={secondChancePrompt.duplicateCard} />}
       {gameState.phase === 'GAME_END' && gameState.winnerId && (
         <GameOverModal winnerId={gameState.winnerId} players={gameState.players} />
+      )}
+
+      {showLeaveConfirm && (
+        <div className="modal-overlay">
+          <div className="modal leave-confirm-modal">
+            <h2>Leave Game?</h2>
+            <p>Are you sure you want to leave? You won't be able to rejoin this game.</p>
+            <div className="modal-actions">
+              <button className="secondary" onClick={() => setShowLeaveConfirm(false)}>
+                Cancel
+              </button>
+              <button className="danger" onClick={leaveRoom}>
+                Leave Game
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

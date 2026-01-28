@@ -1,0 +1,36 @@
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  z-index: 200;
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.toast-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+}
+
+.toast-success {
+  background: var(--color-secondary);
+  color: white;
+}
+
+.toast-error {
+  background: var(--color-danger);
+  color: white;
+}
+
+.toast-info {
+  background: var(--color-primary);
+  color: white;
+}

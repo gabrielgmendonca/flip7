@@ -92,3 +92,43 @@
   color: var(--color-text-muted);
   font-style: italic;
 }
+
+.bust-risk {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-surface-light);
+}
+
+.bust-risk-label {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-right: 0.5rem;
+}
+
+.bust-risk-numbers {
+  display: inline-flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.bust-risk-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border-radius: 0.25rem;
+  cursor: default;
+}
+
+.bust-risk-num.safe {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+}
+
+.bust-risk-num.danger {
+  background: var(--color-danger);
+  color: white;
+}

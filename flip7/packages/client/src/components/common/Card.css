@@ -7,6 +7,12 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s, box-shadow 0.2s;
   user-select: none;
+  cursor: default;
+}
+
+.game-card:hover {
+  transform: scale(1.08) translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
 .game-card-small {
@@ -49,7 +55,8 @@
 }
 
 .game-card-new {
-  animation: cardDraw 0.3s ease-out;
+  animation: cardDraw 0.3s ease-out, cardGlow 1.5s ease-in-out infinite;
+  box-shadow: 0 0 12px 4px rgba(250, 204, 21, 0.7);
 }
 
 @keyframes cardDraw {
@@ -60,6 +67,15 @@
   100% {
     transform: scale(1) rotate(0deg);
     opacity: 1;
+  }
+}
+
+@keyframes cardGlow {
+  0%, 100% {
+    box-shadow: 0 0 12px 4px rgba(250, 204, 21, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 20px 8px rgba(250, 204, 21, 0.9);
   }
 }
 

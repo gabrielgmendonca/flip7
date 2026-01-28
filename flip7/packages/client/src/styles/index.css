@@ -72,6 +72,10 @@ button.danger {
   color: white;
 }
 
+button.danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
 button.success {
   background-color: var(--color-secondary);
   color: white;

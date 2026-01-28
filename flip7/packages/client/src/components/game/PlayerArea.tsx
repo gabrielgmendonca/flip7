@@ -8,12 +8,16 @@ interface PlayerAreaProps {
   isCurrentTurn: boolean;
   isMe?: boolean;
   isCompact?: boolean;
+  lastDrawnCardId?: string;
+  showBustRisk?: boolean;
 }
 
-export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = false }: PlayerAreaProps) {
+export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = false, lastDrawnCardId, showBustRisk = false }: PlayerAreaProps) {
   const uniqueNumbers = new Set(
     player.cards.filter((pc) => isNumberCard(pc.card)).map((pc) => (pc.card as any).value)
   );
+
+  const allNumbers = Array.from({ length: 13 }, (_, i) => i);
 
   const statusLabel = {
     active: '',
@@ -54,10 +58,28 @@ export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = fa
               key={playedCard.card.id}
               playedCard={playedCard}
               size={isCompact ? 'small' : 'medium'}
+              isNew={playedCard.card.id === lastDrawnCardId}
             />
           ))
         )}
       </div>
+
+      {showBustRisk && uniqueNumbers.size > 0 && (
+        <div className="bust-risk">
+          <span className="bust-risk-label">Bust risk:</span>
+          <div className="bust-risk-numbers">
+            {allNumbers.map((num) => (
+              <span
+                key={num}
+                className={`bust-risk-num ${uniqueNumbers.has(num) ? 'danger' : 'safe'}`}
+                title={uniqueNumbers.has(num) ? `Drawing ${num} will bust!` : `${num} is safe`}
+              >
+                {num}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

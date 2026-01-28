@@ -25,6 +25,30 @@ export function Card({ card, attachedModifiers = [], isNew = false, size = 'medi
     return className;
   };
 
+  const getTooltip = (): string => {
+    if (isNumberCard(card)) {
+      const modDesc = attachedModifiers.map(mod =>
+        isModifierCard(mod) ? (mod.modifier === 'x2' ? 'x2' : `+${mod.modifier}`) : ''
+      ).filter(Boolean).join(', ');
+      return modDesc ? `${card.value} (${modDesc})` : `Number ${card.value}`;
+    }
+    if (isActionCard(card)) {
+      const descriptions: Record<string, string> = {
+        freeze: 'Freeze: Skip your next turn but keep your cards safe',
+        flip_three: 'Flip 3: Draw 3 cards at once',
+        second_chance: 'Second Chance: If you bust, choose to keep or discard the duplicate',
+      };
+      return descriptions[card.action] || card.action;
+    }
+    if (isModifierCard(card)) {
+      if (card.modifier === 'x2') {
+        return 'x2: Doubles the value of the attached number card';
+      }
+      return `+${card.modifier}: Adds ${card.modifier} points to the attached number card`;
+    }
+    return '';
+  };
+
   const renderCardContent = () => {
     if (isNumberCard(card)) {
       return (
@@ -69,7 +93,7 @@ export function Card({ card, attachedModifiers = [], isNew = false, size = 'medi
     return null;
   };
 
-  return <div className={getCardClass()}>{renderCardContent()}</div>;
+  return <div className={getCardClass()} title={getTooltip()}>{renderCardContent()}</div>;
 }
 
 interface PlayedCardProps {

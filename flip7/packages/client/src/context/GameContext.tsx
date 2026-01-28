@@ -21,6 +21,8 @@ interface State {
   error: string | null;
   lastDrawnCard: { card: Card; playedCard: PlayedCard; isBust: boolean } | null;
   secondChancePrompt: { duplicateCard: Card } | null;
+  showReconnectedToast: boolean;
+  turnTimer: { startTime: number; timeoutSeconds: number } | null;
 }
 
 type Action =
@@ -40,7 +42,10 @@ type Action =
   | { type: 'LEFT_ROOM' }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'CLEAR_ERROR' }
-  | { type: 'CLEAR_DRAWN_CARD' };
+  | { type: 'CLEAR_DRAWN_CARD' }
+  | { type: 'CLEAR_RECONNECTED_TOAST' }
+  | { type: 'TURN_START'; payload: { timeoutSeconds: number } }
+  | { type: 'CLEAR_TURN_TIMER' };
 
 const initialState: State = {
   screen: 'home',
@@ -52,6 +57,8 @@ const initialState: State = {
   error: null,
   lastDrawnCard: null,
   secondChancePrompt: null,
+  showReconnectedToast: false,
+  turnTimer: null,
 };
 
 function reducer(state: State, action: Action): State {
@@ -125,6 +132,8 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         gameState: action.payload.gameState,
+        // Clear turn timer if the phase is not PLAYER_TURN
+        turnTimer: action.payload.gameState.phase === 'PLAYER_TURN' ? state.turnTimer : null,
       };
 
     case 'CARD_DRAWN':
@@ -158,7 +167,23 @@ function reducer(state: State, action: Action): State {
         gameState: action.payload.gameState,
         playerId: action.payload.playerId,
         error: null,
+        showReconnectedToast: true,
       };
+
+    case 'CLEAR_RECONNECTED_TOAST':
+      return { ...state, showReconnectedToast: false };
+
+    case 'TURN_START':
+      return {
+        ...state,
+        turnTimer: {
+          startTime: Date.now(),
+          timeoutSeconds: action.payload.timeoutSeconds,
+        },
+      };
+
+    case 'CLEAR_TURN_TIMER':
+      return { ...state, turnTimer: null };
 
     case 'LEFT_ROOM':
       localStorage.removeItem('flip7_reconnect_token');
@@ -233,6 +258,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       on('game:cardDrawn', (data) => dispatch({ type: 'CARD_DRAWN', payload: data })),
       on('game:secondChancePrompt', (data) => dispatch({ type: 'SECOND_CHANCE_PROMPT', payload: data })),
       on('game:secondChanceUsed', () => dispatch({ type: 'CLEAR_SECOND_CHANCE' })),
+      on('game:turnStart', (data) => dispatch({ type: 'TURN_START', payload: data })),
       on('connection:reconnected', (data) => dispatch({ type: 'RECONNECTED', payload: data })),
     ];
 

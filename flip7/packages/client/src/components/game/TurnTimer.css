@@ -1,0 +1,48 @@
+.turn-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 200px;
+}
+
+.timer-bar-container {
+  flex: 1;
+  height: 8px;
+  background: var(--color-surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timer-bar {
+  height: 100%;
+  background: var(--color-secondary);
+  border-radius: 4px;
+  transition: width 0.1s linear, background 0.3s;
+}
+
+.timer-bar-low {
+  background: var(--color-danger);
+  animation: timerPulse 0.5s infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.timer-text {
+  font-size: 0.875rem;
+  font-weight: bold;
+  min-width: 2.5rem;
+  text-align: right;
+  color: var(--color-text-muted);
+}
+
+.timer-text-low {
+  color: var(--color-danger);
+}
