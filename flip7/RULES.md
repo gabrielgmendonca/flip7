@@ -8,7 +8,7 @@ Be the first player to score **200 or more points**. If multiple players exceed 
 
 ## The Deck (94 Cards)
 
-### Number Cards (78 cards)
+### Number Cards (79 cards)
 
 The deck contains number cards from 0 to 12. The quantity of each card matches its value:
 

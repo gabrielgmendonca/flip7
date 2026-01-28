@@ -63,9 +63,9 @@ describe('Game', () => {
   });
 
   describe('startGame', () => {
-    it('should throw error with less than 2 players', () => {
-      const singlePlayerGame = new Game([players[0]]);
-      expect(() => singlePlayerGame.startGame()).toThrow('Need at least 2 players');
+    it('should throw error with less than 3 players', () => {
+      const twoPlayerGame = new Game(createPlayers(2));
+      expect(() => twoPlayerGame.startGame()).toThrow('Need at least 3 players');
     });
 
     it('should transition to PLAYER_TURN phase', () => {
@@ -90,10 +90,10 @@ describe('Game', () => {
       }
     });
 
-    it('should work with exactly 2 players', () => {
-      const twoPlayerGame = new Game(createPlayers(2));
-      expect(() => twoPlayerGame.startGame()).not.toThrow();
-      expect(twoPlayerGame.getState().phase).toBe('PLAYER_TURN');
+    it('should work with exactly 3 players', () => {
+      const threePlayerGame = new Game(createPlayers(3));
+      expect(() => threePlayerGame.startGame()).not.toThrow();
+      expect(threePlayerGame.getState().phase).toBe('PLAYER_TURN');
     });
   });
 

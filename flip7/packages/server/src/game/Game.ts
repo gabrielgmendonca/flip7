@@ -65,8 +65,8 @@ export class Game {
   }
 
   startGame(): void {
-    if (this.players.length < 2) {
-      throw new Error('Need at least 2 players to start');
+    if (this.players.length < 3) {
+      throw new Error('Need at least 3 players to start');
     }
 
     this.dealerIndex = Math.floor(Math.random() * this.players.length);
