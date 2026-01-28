@@ -175,7 +175,7 @@ export class RoomManager {
     return room.settings;
   }
 
-  startGame(hostId: string): Game | null {
+  startGame(hostId: string, onRoundStart?: () => void): Game | null {
     console.log('startGame called with hostId:', hostId);
     const roomCode = this.playerToRoom.get(hostId);
     console.log('roomCode from playerToRoom:', roomCode);
@@ -212,7 +212,7 @@ export class RoomManager {
       };
     });
 
-    const game = new Game(gamePlayers, room.settings);
+    const game = new Game(gamePlayers, room.settings, onRoundStart);
     game.startGame();
 
     this.games.set(roomCode, game);
@@ -225,7 +225,7 @@ export class RoomManager {
     return this.games.get(roomCode);
   }
 
-  rematch(hostId: string): Game | null {
+  rematch(hostId: string, onRoundStart?: () => void): Game | null {
     const roomCode = this.playerToRoom.get(hostId);
     if (!roomCode) {
       return null;
@@ -268,7 +268,7 @@ export class RoomManager {
       };
     });
 
-    const game = new Game(gamePlayers, room.settings);
+    const game = new Game(gamePlayers, room.settings, onRoundStart);
     game.startGame();
 
     this.games.set(roomCode, game);

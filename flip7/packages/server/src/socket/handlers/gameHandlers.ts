@@ -20,7 +20,30 @@ export function registerGameHandlers(
     console.log('game:start received from', socket.id);
     console.log('socket.data:', socket.data);
 
-    const game = roomManager.startGame(socket.id);
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) {
+      return;
+    }
+
+    // Callback to broadcast state when a new round starts (after timeout)
+    const onRoundStart = () => {
+      const game = roomManager.getGame(roomCode);
+      if (!game) return;
+
+      const gameState = game.getState() as PublicGameState;
+      io.to(roomCode).emit('game:stateUpdate', { gameState });
+
+      // Send turn start to current player
+      const currentPlayer = game.getCurrentPlayer();
+      if (currentPlayer) {
+        io.to(roomCode).emit('game:turnStart', {
+          playerId: currentPlayer.id,
+          timeoutSeconds: gameState.settings.turnTimeoutSeconds,
+        });
+      }
+    };
+
+    const game = roomManager.startGame(socket.id, onRoundStart);
 
     if (!game) {
       console.log('startGame returned null');
@@ -29,11 +52,6 @@ export function registerGameHandlers(
     }
 
     console.log('Game started successfully');
-
-    const roomCode = socket.data.roomCode;
-    if (!roomCode) {
-      return;
-    }
 
     const gameState = game.getState() as PublicGameState;
     io.to(roomCode).emit('game:started', { gameState });
@@ -217,15 +235,33 @@ export function registerGameHandlers(
   socket.on('game:rematch', () => {
     console.log('game:rematch received from', socket.id);
 
-    const game = roomManager.rematch(socket.id);
-
-    if (!game) {
-      socket.emit('room:error', { message: 'Unable to start rematch. You may not be the host or need more players.' });
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) {
       return;
     }
 
-    const roomCode = socket.data.roomCode;
-    if (!roomCode) {
+    // Callback to broadcast state when a new round starts (after timeout)
+    const onRoundStart = () => {
+      const game = roomManager.getGame(roomCode);
+      if (!game) return;
+
+      const gameState = game.getState() as PublicGameState;
+      io.to(roomCode).emit('game:stateUpdate', { gameState });
+
+      // Send turn start to current player
+      const currentPlayer = game.getCurrentPlayer();
+      if (currentPlayer) {
+        io.to(roomCode).emit('game:turnStart', {
+          playerId: currentPlayer.id,
+          timeoutSeconds: gameState.settings.turnTimeoutSeconds,
+        });
+      }
+    };
+
+    const game = roomManager.rematch(socket.id, onRoundStart);
+
+    if (!game) {
+      socket.emit('room:error', { message: 'Unable to start rematch. You may not be the host or need more players.' });
       return;
     }
 

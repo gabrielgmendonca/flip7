@@ -10,6 +10,7 @@
   max-height: 300px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  z-index: 40;
 }
 
 .activity-log h4 {
@@ -56,5 +57,35 @@
     position: static;
     margin-bottom: 1rem;
     max-width: 100%;
+  }
+}
+
+/* Mobile landscape mode */
+@media (max-height: 500px) and (orientation: landscape) {
+  .activity-log {
+    position: fixed;
+    top: auto;
+    bottom: 0.5rem;
+    left: 0.5rem;
+    padding: 0.5rem;
+    min-width: 120px;
+    max-width: 150px;
+    max-height: 40%;
+    overflow-y: auto;
+  }
+
+  .activity-log h4 {
+    font-size: 0.625rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .activity-list {
+    max-height: unset;
+    gap: 0.125rem;
+  }
+
+  .activity-entry {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.25rem;
   }
 }

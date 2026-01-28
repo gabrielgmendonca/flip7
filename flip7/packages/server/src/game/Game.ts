@@ -47,10 +47,16 @@ export class Game {
   private flipThreeRemaining: number = 0;
   private winnerId?: string;
   private roundStartTimeout?: ReturnType<typeof setTimeout>;
+  private onRoundStart?: () => void;
 
-  constructor(gamePlayers: GamePlayer[], settings: Partial<GameSettings> = {}) {
+  constructor(
+    gamePlayers: GamePlayer[],
+    settings: Partial<GameSettings> = {},
+    onRoundStart?: () => void
+  ) {
     this.settings = { ...DEFAULT_GAME_SETTINGS, ...settings };
     this.deck = new Deck();
+    this.onRoundStart = onRoundStart;
 
     this.players = gamePlayers.map((gp, index) => ({
       id: gp.id,
@@ -101,6 +107,9 @@ export class Game {
     this.currentPlayerIndex = (this.dealerIndex + 1) % this.players.length;
     this.skipInactivePlayers();
     this.phase = 'PLAYER_TURN';
+
+    // Notify listeners that a new round has started
+    this.onRoundStart?.();
   }
 
   private dealInitialCard(player: Player): void {

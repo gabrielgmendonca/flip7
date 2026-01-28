@@ -1,5 +1,6 @@
 import React from 'react';
 import { RoundEndData } from '../../context/GameContext';
+import { Confetti } from '../common/Confetti';
 import './Modal.css';
 import './RoundSummaryModal.css';
 
@@ -11,9 +12,11 @@ interface RoundSummaryModalProps {
 
 export function RoundSummaryModal({ data, currentPlayerId, onContinue }: RoundSummaryModalProps) {
   const sortedScores = [...data.scores].sort((a, b) => b.totalScore - a.totalScore);
+  const hasWinner = sortedScores.length > 0 && sortedScores[0].roundScore > 0;
 
   return (
     <div className="modal-overlay">
+      {hasWinner && <Confetti />}
       <div className="modal round-summary-modal">
         <h2>Round {data.round} Complete</h2>
 

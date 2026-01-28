@@ -4,6 +4,7 @@ import { Home } from './components/home/Home';
 import { Lobby } from './components/lobby/Lobby';
 import { GameBoard } from './components/game/GameBoard';
 import { ToastContainer } from './components/common/ToastContainer';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 function AppContent() {
   const { state, removeToast } = useGame();
@@ -31,9 +32,11 @@ function AppContent() {
 
 function App() {
   return (
-    <GameProvider>
-      <AppContent />
-    </GameProvider>
+    <ErrorBoundary>
+      <GameProvider>
+        <AppContent />
+      </GameProvider>
+    </ErrorBoundary>
   );
 }
 

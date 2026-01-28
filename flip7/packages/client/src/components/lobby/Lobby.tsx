@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
+import { ValidatedInput, validationRules } from '../common/ValidatedInput';
 import './Lobby.css';
 
 export function Lobby() {
@@ -11,6 +12,14 @@ export function Lobby() {
 
   const isHost = room.hostId === playerId;
   const canStart = room.players.length >= 3;
+
+  const targetScoreRules = useMemo(() => [
+    validationRules.numberRange(50, 500, 'Must be between 50 and 500'),
+  ], []);
+
+  const timeoutRules = useMemo(() => [
+    validationRules.numberRange(10, 120, 'Must be between 10 and 120'),
+  ], []);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(room.code);
@@ -56,25 +65,27 @@ export function Lobby() {
           <div className="settings-section">
             <h2>Game Settings</h2>
             <div className="setting-item">
-              <label>Target Score:</label>
-              <input
+              <ValidatedInput
                 type="number"
-                value={room.settings.targetScore}
-                onChange={(e) => updateSettings({ targetScore: parseInt(e.target.value) || 200 })}
+                value={String(room.settings.targetScore)}
+                onChange={(value) => updateSettings({ targetScore: parseInt(value) || 200 })}
                 min={50}
                 max={500}
                 step={50}
+                rules={targetScoreRules}
+                label="Target Score:"
               />
             </div>
             <div className="setting-item">
-              <label>Turn Timeout (seconds):</label>
-              <input
+              <ValidatedInput
                 type="number"
-                value={room.settings.turnTimeoutSeconds}
-                onChange={(e) => updateSettings({ turnTimeoutSeconds: parseInt(e.target.value) || 30 })}
+                value={String(room.settings.turnTimeoutSeconds)}
+                onChange={(value) => updateSettings({ turnTimeoutSeconds: parseInt(value) || 30 })}
                 min={10}
                 max={120}
                 step={5}
+                rules={timeoutRules}
+                label="Turn Timeout (seconds):"
               />
             </div>
           </div>

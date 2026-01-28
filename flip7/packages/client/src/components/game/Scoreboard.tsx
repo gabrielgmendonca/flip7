@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Player } from '@flip7/shared';
 import './Scoreboard.css';
 
@@ -9,11 +9,15 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({ players, currentPlayerId, targetScore }: ScoreboardProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
 
   return (
-    <div className="scoreboard">
-      <h3>Scoreboard <span className="target-label">/{targetScore}</span></h3>
+    <div className={`scoreboard ${isCollapsed ? 'collapsed' : ''}`}>
+      <h3 className="scoreboard-header" onClick={() => setIsCollapsed(!isCollapsed)}>
+        Scoreboard <span className="target-label">/{targetScore}</span>
+        <span className="collapse-indicator">{isCollapsed ? '\u25B2' : '\u25BC'}</span>
+      </h3>
       <div className="score-list">
         {sortedPlayers.map((player, index) => {
           const progress = Math.min((player.score / targetScore) * 100, 100);

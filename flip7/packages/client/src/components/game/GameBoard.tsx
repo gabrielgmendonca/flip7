@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useGame } from '../../context/GameContext';
 import { PlayedCardComponent, CardBack } from '../common/Card';
 import { PlayerArea } from './PlayerArea';
@@ -9,16 +9,23 @@ import { TurnTimer } from './TurnTimer';
 import { ActivityLog } from './ActivityLog';
 import { RoundSummaryModal } from './RoundSummaryModal';
 import { HelpModal } from './HelpModal';
+import { TurnOrder } from './TurnOrder';
+import { useSound } from '../../hooks/useSound';
 import './GameBoard.css';
 import './Modal.css';
 import './HelpModal.css';
 
 export function GameBoard() {
-  const { state, dispatch, hit, pass, leaveRoom } = useGame();
-  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary } = state;
+  const { state, dispatch, hit, pass, leaveRoom, toggleSound } = useGame();
+  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
+  const { playSound } = useSound(soundEnabled);
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+
+  const prevIsMyTurn = useRef(false);
+  const prevLastDrawnCard = useRef(lastDrawnCard);
+  const prevPhase = useRef(gameState?.phase);
 
   if (!gameState) return null;
 
@@ -28,6 +35,38 @@ export function GameBoard() {
   const canAct = isMyTurn && myPlayer?.status === 'active';
 
   const otherPlayers = gameState.players.filter((p) => p.id !== playerId);
+
+  // Sound effects
+  useEffect(() => {
+    // My turn start
+    if (isMyTurn && !prevIsMyTurn.current) {
+      playSound('turn');
+    }
+    prevIsMyTurn.current = isMyTurn;
+
+    // Card drawn
+    if (lastDrawnCard && lastDrawnCard !== prevLastDrawnCard.current) {
+      if (lastDrawnCard.isBust) {
+        playSound('bust');
+      } else {
+        playSound('draw');
+      }
+    }
+    prevLastDrawnCard.current = lastDrawnCard;
+
+    // Game end
+    if (gameState.phase === 'GAME_END' && prevPhase.current !== 'GAME_END') {
+      playSound('win');
+    }
+    prevPhase.current = gameState.phase;
+  }, [isMyTurn, lastDrawnCard, gameState.phase, playSound]);
+
+  // Check activity log for pass events
+  useEffect(() => {
+    if (activityLog.length > 0 && activityLog[0].message.includes('passed')) {
+      playSound('pass');
+    }
+  }, [activityLog, playSound]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,10 +89,25 @@ export function GameBoard() {
           <span>Round {gameState.round}</span>
           <span className="deck-count">{gameState.deckCount} cards left</span>
         </div>
-        <button className="secondary leave-btn" onClick={() => setShowLeaveConfirm(true)}>
-          Leave Game
-        </button>
+        <div className="header-actions">
+          <button
+            className={`sound-toggle ${soundEnabled ? 'enabled' : 'disabled'}`}
+            onClick={toggleSound}
+            title={soundEnabled ? 'Mute sounds' : 'Enable sounds'}
+          >
+            {soundEnabled ? '\u266A' : '\u266A'}
+          </button>
+          <button className="secondary leave-btn" onClick={() => setShowLeaveConfirm(true)}>
+            Leave Game
+          </button>
+        </div>
       </div>
+
+      <TurnOrder
+        players={gameState.players}
+        currentPlayerIndex={gameState.currentPlayerIndex}
+        currentPlayerId={playerId}
+      />
 
       <div className="game-main">
         <div className="opponents-area">

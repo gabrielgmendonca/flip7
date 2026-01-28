@@ -371,6 +371,155 @@ describe('Game', () => {
       const newState = game.getState();
       expect(['ROUND_END', 'PLAYER_TURN', 'GAME_END']).toContain(newState.phase);
     });
+
+    it('should start next round after timeout when round ends', () => {
+      vi.useFakeTimers();
+
+      try {
+        game.startGame();
+        expect(game.getState().round).toBe(1);
+
+        // Have all players pass to end the round
+        for (let i = 0; i < 10; i++) {
+          const currentPlayer = game.getCurrentPlayer();
+          if (currentPlayer && currentPlayer.status === 'active') {
+            game.pass(currentPlayer.id);
+          }
+        }
+
+        // Verify round has ended
+        const stateAfterRound = game.getState();
+        expect(stateAfterRound.phase).toBe('ROUND_END');
+
+        // Advance time by 3 seconds (the round start delay)
+        vi.advanceTimersByTime(3000);
+
+        // Verify the game has started a new round
+        const stateAfterTimeout = game.getState();
+        expect(stateAfterTimeout.phase).toBe('PLAYER_TURN');
+        expect(stateAfterTimeout.round).toBe(2);
+
+        // Players should be reset to active status
+        const activePlayers = stateAfterTimeout.players.filter(
+          (p) => p.status === 'active'
+        );
+        expect(activePlayers.length).toBeGreaterThan(0);
+
+        // Clean up
+        game.cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should reset player cards and round scores when starting new round', () => {
+      vi.useFakeTimers();
+
+      try {
+        game.startGame();
+
+        // Have all players pass to end the round
+        for (let i = 0; i < 10; i++) {
+          const currentPlayer = game.getCurrentPlayer();
+          if (currentPlayer && currentPlayer.status === 'active') {
+            game.pass(currentPlayer.id);
+          }
+        }
+
+        const stateAtRoundEnd = game.getState();
+        expect(stateAtRoundEnd.phase).toBe('ROUND_END');
+
+        // Some players should have round scores from passing
+        const playersWithRoundScores = stateAtRoundEnd.players.filter(
+          (p) => p.roundScore > 0
+        );
+        expect(playersWithRoundScores.length).toBeGreaterThan(0);
+
+        // Advance to next round
+        vi.advanceTimersByTime(3000);
+
+        const stateAfterNewRound = game.getState();
+
+        // Round scores should be reset to 0
+        for (const player of stateAfterNewRound.players) {
+          expect(player.roundScore).toBe(0);
+        }
+
+        // Players should have new initial cards dealt
+        const activePlayers = stateAfterNewRound.players.filter(
+          (p) => p.status === 'active' || p.status === 'frozen' || p.status === 'passed'
+        );
+        for (const player of activePlayers) {
+          expect(player.cards.length).toBeGreaterThanOrEqual(1);
+        }
+
+        game.cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should rotate dealer when starting new round', () => {
+      vi.useFakeTimers();
+
+      try {
+        game.startGame();
+        const initialDealerIndex = game.getState().dealerIndex;
+
+        // End the round
+        for (let i = 0; i < 10; i++) {
+          const currentPlayer = game.getCurrentPlayer();
+          if (currentPlayer && currentPlayer.status === 'active') {
+            game.pass(currentPlayer.id);
+          }
+        }
+
+        expect(game.getState().phase).toBe('ROUND_END');
+
+        // Advance to next round
+        vi.advanceTimersByTime(3000);
+
+        const newDealerIndex = game.getState().dealerIndex;
+        const expectedDealerIndex = (initialDealerIndex + 1) % players.length;
+        expect(newDealerIndex).toBe(expectedDealerIndex);
+
+        game.cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('should call onRoundStart callback when new round starts after timeout', () => {
+      vi.useFakeTimers();
+
+      const onRoundStart = vi.fn();
+      game = new Game(players, {}, onRoundStart);
+      game.startGame();
+
+      // onRoundStart should be called once for the initial round
+      expect(onRoundStart).toHaveBeenCalledTimes(1);
+
+      // End the round
+      for (let i = 0; i < 10; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer && currentPlayer.status === 'active') {
+          game.pass(currentPlayer.id);
+        }
+      }
+
+      expect(game.getState().phase).toBe('ROUND_END');
+
+      // Advance to next round
+      vi.advanceTimersByTime(3000);
+
+      // onRoundStart should be called again for the new round
+      expect(onRoundStart).toHaveBeenCalledTimes(2);
+      expect(game.getState().phase).toBe('PLAYER_TURN');
+      expect(game.getState().round).toBe(2);
+
+      game.cleanup();
+      vi.useRealTimers();
+    });
   });
 
   describe('scoring', () => {

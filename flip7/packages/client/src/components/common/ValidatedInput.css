@@ -1,0 +1,46 @@
+.validated-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.validated-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.validated-input-wrapper input {
+  flex: 1;
+  padding-right: 2.5rem;
+}
+
+.validated-input-wrapper input.valid {
+  border-color: var(--color-secondary);
+}
+
+.validated-input-wrapper input.invalid {
+  border-color: var(--color-danger);
+}
+
+.validation-icon {
+  position: absolute;
+  right: 0.75rem;
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.validation-icon.valid {
+  color: var(--color-secondary);
+}
+
+.validation-icon.invalid {
+  color: var(--color-danger);
+}
+
+.validation-error {
+  font-size: 0.75rem;
+  color: var(--color-danger);
+  margin-top: 0.25rem;
+  min-height: 1rem;
+}

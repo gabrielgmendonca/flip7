@@ -45,6 +45,7 @@ interface State {
   pendingAction: boolean;
   roundEndData: RoundEndData | null;
   showRoundSummary: boolean;
+  soundEnabled: boolean;
 }
 
 type Action =
@@ -76,7 +77,8 @@ type Action =
   | { type: 'SHOW_ROUND_SUMMARY'; payload: boolean }
   | { type: 'PLAYER_PASSED'; payload: { playerId: string; playerName: string; roundScore: number } }
   | { type: 'PLAYER_BUSTED'; payload: { playerId: string; playerName: string } }
-  | { type: 'PLAYER_FROZEN'; payload: { playerId: string; playerName: string; frozenScore: number } };
+  | { type: 'PLAYER_FROZEN'; payload: { playerId: string; playerName: string; frozenScore: number } }
+  | { type: 'TOGGLE_SOUND' };
 
 const initialState: State = {
   screen: 'home',
@@ -95,6 +97,7 @@ const initialState: State = {
   pendingAction: false,
   roundEndData: null,
   showRoundSummary: false,
+  soundEnabled: localStorage.getItem('flip7_sound_enabled') !== 'false',
 };
 
 let toastIdCounter = 0;
@@ -305,6 +308,11 @@ function reducer(state: State, action: Action): State {
         ].slice(0, 20),
       };
 
+    case 'TOGGLE_SOUND':
+      const newSoundEnabled = !state.soundEnabled;
+      localStorage.setItem('flip7_sound_enabled', String(newSoundEnabled));
+      return { ...state, soundEnabled: newSoundEnabled };
+
     default:
       return state;
   }
@@ -326,6 +334,7 @@ interface GameContextType {
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
   removeToast: (id: string) => void;
   rematch: () => void;
+  toggleSound: () => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -472,6 +481,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     emit('game:rematch');
   };
 
+  const toggleSound = () => {
+    dispatch({ type: 'TOGGLE_SOUND' });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -490,6 +503,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         addToast,
         removeToast,
         rematch,
+        toggleSound,
       }}
     >
       {children}

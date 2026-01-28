@@ -27,13 +27,13 @@ Quality of Experience features for the game round screen.
 
 ## Higher Effort / Polish
 
-- [ ] **Round end celebration** - Confetti or visual effect for round winners
-- [ ] **Sound effects** - Audio cues for draw, bust, pass, win
-- [ ] **Player turn order** - Visual indicator showing turn sequence
-- [ ] **Mobile landscape mode** - Optimize layout for horizontal phone orientation
+- [x] **Round end celebration** - Confetti or visual effect for round winners
+- [x] **Sound effects** - Audio cues for draw, bust, pass, win
+- [x] **Player turn order** - Visual indicator showing turn sequence
+- [x] **Mobile landscape mode** - Optimize layout for horizontal phone orientation
 
 ## Technical Debt
 
-- [ ] **Error boundary component** - Graceful fallback if app crashes
-- [ ] **Form validation feedback** - Real-time validation on inputs
-- [ ] **Scoreboard overlap fix** - Prevent overlap on smaller screens
+- [x] **Error boundary component** - Graceful fallback if app crashes
+- [x] **Form validation feedback** - Real-time validation on inputs
+- [x] **Scoreboard overlap fix** - Prevent overlap on smaller screens

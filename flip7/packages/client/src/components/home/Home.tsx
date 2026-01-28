@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGame } from '../../context/GameContext';
+import { ValidatedInput, validationRules } from '../common/ValidatedInput';
 import './Home.css';
 
 export function Home() {
@@ -7,9 +8,15 @@ export function Home() {
   const [joinCode, setJoinCode] = useState('');
   const [mode, setMode] = useState<'menu' | 'join'>('menu');
 
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    dispatch({ type: 'SET_PLAYER_NAME', payload: e.target.value });
+  const handleNameChange = (value: string) => {
+    dispatch({ type: 'SET_PLAYER_NAME', payload: value });
   };
+
+  const nameRules = useMemo(() => [
+    validationRules.required('Please enter your name'),
+    validationRules.minLength(2, 'Name must be at least 2 characters'),
+    validationRules.maxLength(20, 'Name must be at most 20 characters'),
+  ], []);
 
   const handleJoin = () => {
     if (joinCode.trim()) {
@@ -31,14 +38,14 @@ export function Home() {
 
 
         <div className="name-input-container">
-          <label htmlFor="playerName">Your Name</label>
-          <input
+          <ValidatedInput
             id="playerName"
-            type="text"
             value={state.playerName}
             onChange={handleNameChange}
             placeholder="Enter your name"
             maxLength={20}
+            rules={nameRules}
+            label="Your Name"
           />
         </div>
 
