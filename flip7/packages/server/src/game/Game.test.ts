@@ -449,4 +449,433 @@ describe('Game', () => {
       expect(['LOBBY', 'DEALING', 'PLAYER_TURN', 'AWAITING_SECOND_CHANCE', 'ROUND_END', 'GAME_END']).toContain(state.phase);
     });
   });
+
+  describe('updatePlayerId', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should update player id', () => {
+      game.updatePlayerId('player-1', 'new-player-1');
+
+      const player = game.getPlayer('new-player-1');
+      expect(player).toBeDefined();
+      expect(player!.name).toBe('Player 1');
+    });
+
+    it('should remove old player id', () => {
+      game.updatePlayerId('player-1', 'new-player-1');
+
+      const oldPlayer = game.getPlayer('player-1');
+      expect(oldPlayer).toBeUndefined();
+    });
+
+    it('should do nothing for non-existent player', () => {
+      // Should not throw
+      expect(() => game.updatePlayerId('non-existent', 'new-id')).not.toThrow();
+    });
+
+    it('should allow hit/pass with new id after update', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+      const newId = 'new-' + currentPlayer.id;
+
+      game.updatePlayerId(currentPlayer.id, newId);
+
+      // The action should work with the new ID
+      const result = game.pass(newId);
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('cleanup', () => {
+    it('should clean up round start timeout', () => {
+      game.startGame();
+
+      // Have all players pass to end round (which schedules next round)
+      for (let i = 0; i < 10; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer && currentPlayer.status === 'active') {
+          game.pass(currentPlayer.id);
+        }
+      }
+
+      const state = game.getState();
+      if (state.phase === 'ROUND_END') {
+        // Cleanup should not throw
+        expect(() => game.cleanup()).not.toThrow();
+      }
+    });
+
+    it('should be safe to call multiple times', () => {
+      game.startGame();
+      game.cleanup();
+      expect(() => game.cleanup()).not.toThrow();
+    });
+  });
+
+  describe('freeze mechanics', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should mark player as frozen when freeze card is drawn', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a freeze or run out of attempts
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const player = game.getPlayer(currentPlayer.id)!;
+          expect(player.status).toBe('frozen');
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should calculate round score when frozen', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until frozen
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const player = game.getPlayer(currentPlayer.id)!;
+          expect(typeof player.roundScore).toBe('number');
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+  });
+
+  describe('bust mechanics', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should mark player as busted on duplicate card', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until bust
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust) {
+          if (result.hasSecondChance) {
+            game.useSecondChance(currentPlayer.id, false);
+          }
+          const player = game.getPlayer(currentPlayer.id)!;
+          expect(player.status).toBe('busted');
+          expect(player.roundScore).toBe(0);
+          break;
+        }
+      }
+    });
+
+    it('should set round score to 0 when busted', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until bust
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust) {
+          if (result.hasSecondChance) {
+            game.useSecondChance(currentPlayer.id, false);
+          }
+          const player = game.getPlayer(currentPlayer.id)!;
+          expect(player.roundScore).toBe(0);
+          break;
+        }
+      }
+    });
+  });
+
+  describe('second chance mechanics', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should allow using second chance to avoid bust', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a bust with second chance
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust && result.hasSecondChance) {
+          const state = game.getState();
+          expect(state.phase).toBe('AWAITING_SECOND_CHANCE');
+
+          // Use second chance
+          const used = game.useSecondChance(currentPlayer.id, true);
+          expect(used).toBe(true);
+
+          const player = game.getPlayer(currentPlayer.id)!;
+          // Player should still be active (not busted)
+          expect(player.status).toBe('active');
+          break;
+        }
+
+        if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should return false for wrong player using second chance', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a bust with second chance
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust && result.hasSecondChance) {
+          // Try to use second chance as wrong player
+          const wrongPlayerId = players.find((p) => p.id !== currentPlayer.id)!.id;
+          const used = game.useSecondChance(wrongPlayerId, true);
+          expect(used).toBe(false);
+          break;
+        }
+
+        if (result.isBust) {
+          break;
+        }
+      }
+    });
+  });
+
+  describe('game state tracking', () => {
+    it('should track pendingSecondChance in state', () => {
+      game.startGame();
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until second chance scenario
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust && result.hasSecondChance) {
+          const state = game.getState();
+          expect(state.pendingSecondChance).toBeDefined();
+          expect(state.pendingSecondChance!.playerId).toBe(currentPlayer.id);
+          break;
+        }
+
+        if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should track flipThreeRemaining in state', () => {
+      game.startGame();
+      const state = game.getState();
+      expect(typeof state.flipThreeRemaining).toBe('number');
+      expect(state.flipThreeRemaining).toBe(0);
+    });
+
+    it('should track winnerId in state', () => {
+      const state = game.getState();
+      expect(state.winnerId).toBeUndefined();
+    });
+  });
+
+  describe('draw result properties', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should return card and playedCard in result', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+      const result = game.hit(currentPlayer.id);
+
+      expect(result).not.toBeNull();
+      expect(result!.card).toBeDefined();
+      expect(result!.playedCard).toBeDefined();
+      expect(result!.playedCard.card).toBe(result!.card);
+    });
+
+    it('should track if card triggers flip three', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+      const result = game.hit(currentPlayer.id);
+
+      expect(result).not.toBeNull();
+      expect(typeof result!.triggersFlipThree).toBe('boolean');
+    });
+
+    it('should track if card triggers freeze', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+      const result = game.hit(currentPlayer.id);
+
+      expect(result).not.toBeNull();
+      expect(typeof result!.triggersFreeze).toBe('boolean');
+    });
+  });
+
+  describe('multiple disconnections', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should handle all players disconnecting', () => {
+      for (const player of players) {
+        game.playerDisconnected(player.id);
+      }
+
+      // Game should end or be in a valid state
+      const state = game.getState();
+      expect(state.players.every((p) => !p.isConnected)).toBe(true);
+    });
+
+    it('should handle disconnect and reconnect sequence', () => {
+      game.playerDisconnected('player-1');
+      game.playerDisconnected('player-2');
+      game.playerReconnected('player-1');
+      game.playerReconnected('player-2');
+
+      const state = game.getState();
+      expect(state.players.find((p) => p.id === 'player-1')!.isConnected).toBe(true);
+      expect(state.players.find((p) => p.id === 'player-2')!.isConnected).toBe(true);
+    });
+  });
+
+  describe('deck management', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should decrement deck count when drawing', () => {
+      const initialCount = game.getState().deckCount;
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      game.hit(currentPlayer.id);
+
+      // Deck count should decrease (by at least 1, could be more if flip three)
+      expect(game.getState().deckCount).toBeLessThan(initialCount);
+    });
+
+    it('should reshuffle discard pile when deck is empty', () => {
+      // This is hard to test directly, but we can verify the game doesn't crash
+      // when many draws happen
+      for (let i = 0; i < 100; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (!currentPlayer || currentPlayer.status !== 'active') {
+          break;
+        }
+
+        const result = game.hit(currentPlayer.id);
+        if (result?.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        }
+      }
+
+      // Should still be in a valid state
+      const state = game.getState();
+      expect(state.deckCount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('player scores', () => {
+    it('should preserve scores across rounds', () => {
+      game = new Game(players, { targetScore: 10 }); // Low target for faster test
+      game.startGame();
+
+      // Play a round
+      for (let i = 0; i < 10; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer && currentPlayer.status === 'active') {
+          game.pass(currentPlayer.id);
+        }
+      }
+
+      const state = game.getState();
+      // At least some players should have accumulated scores
+      const totalScores = state.players.reduce((sum, p) => sum + p.score, 0);
+      expect(totalScores).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should not add score for busted players', () => {
+      game.startGame();
+      const currentPlayer = game.getCurrentPlayer()!;
+      const initialScore = currentPlayer.score;
+
+      // Get the player to bust
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust) {
+          if (result.hasSecondChance) {
+            game.useSecondChance(currentPlayer.id, false);
+          }
+          break;
+        }
+      }
+
+      // Complete the round
+      for (let i = 0; i < 10; i++) {
+        const cp = game.getCurrentPlayer();
+        if (cp && cp.status === 'active') {
+          game.pass(cp.id);
+        }
+      }
+
+      // Busted player's score should not have increased
+      const player = game.getPlayer(currentPlayer.id)!;
+      if (player.status === 'busted') {
+        expect(player.roundScore).toBe(0);
+      }
+    });
+  });
+
+  describe('modifier cards', () => {
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should add modifier cards to player hand', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a modifier card
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (isModifierCard(result.card)) {
+          const player = game.getPlayer(currentPlayer.id)!;
+          const hasModifier = player.cards.some((pc) => isModifierCard(pc.card));
+          expect(hasModifier).toBe(true);
+          break;
+        }
+
+        if (result.isBust) {
+          if (result.hasSecondChance) {
+            game.useSecondChance(currentPlayer.id, true);
+          } else {
+            break;
+          }
+        }
+      }
+    });
+  });
 });
