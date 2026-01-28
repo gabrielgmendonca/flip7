@@ -9,7 +9,7 @@ export function Lobby() {
   if (!room) return null;
 
   const isHost = room.hostId === playerId;
-  const canStart = room.players.length >= 2;
+  const canStart = room.players.length >= 3;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(room.code);
@@ -84,7 +84,7 @@ export function Lobby() {
         </button>
         {isHost && (
           <button className="primary" onClick={startGame} disabled={!canStart}>
-            {canStart ? 'Start Game' : 'Need 2+ Players'}
+            {canStart ? 'Start Game' : 'Need 3+ Players'}
           </button>
         )}
       </div>
