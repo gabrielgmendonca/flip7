@@ -3,6 +3,7 @@ services:
   - type: web
     name: flip7-server
     runtime: node
+    plan: free
     rootDir: flip7/packages/server
     buildCommand: cd ../shared && npm install && npm run build && cd ../server && npm install && npm run build
     startCommand: npm start
