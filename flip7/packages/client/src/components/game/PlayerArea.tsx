@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Player, isNumberCard } from '@flip7/shared';
 import { PlayedCardComponent } from '../common/Card';
+import { ScoreAnimation } from './ScoreAnimation';
 import './PlayerArea.css';
+import './ScoreAnimation.css';
 
 interface PlayerAreaProps {
   player: Player;
@@ -13,6 +15,8 @@ interface PlayerAreaProps {
 }
 
 export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = false, lastDrawnCardId, showBustRisk = false }: PlayerAreaProps) {
+  const prevRoundScoreRef = useRef(player.roundScore);
+
   const uniqueNumbers = new Set(
     player.cards.filter((pc) => isNumberCard(pc.card)).map((pc) => (pc.card as any).value)
   );
@@ -27,6 +31,12 @@ export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = fa
     disconnected: 'Disconnected',
   };
 
+  // Update previous score ref after render
+  const previousRoundScore = prevRoundScoreRef.current;
+  React.useEffect(() => {
+    prevRoundScoreRef.current = player.roundScore;
+  }, [player.roundScore]);
+
   return (
     <div className={`player-area ${isMe ? 'player-area-me' : ''} ${isCompact ? 'player-area-compact' : ''} ${isCurrentTurn ? 'current-turn' : ''}`}>
       <div className="player-header">
@@ -35,10 +45,11 @@ export function PlayerArea({ player, isCurrentTurn, isMe = false, isCompact = fa
           {isMe && <span className="me-indicator">(You)</span>}
         </div>
         <div className="player-stats">
-          <span className="round-score">
+          <span className="round-score" style={{ position: 'relative' }}>
             Round: <strong>{player.roundScore}</strong>
+            <ScoreAnimation score={player.roundScore} previousScore={previousRoundScore} />
           </span>
-          <span className="unique-count">
+          <span className={`unique-count ${uniqueNumbers.size === 6 ? 'flip-seven-ready' : ''}`}>
             Unique: <strong>{uniqueNumbers.size}/7</strong>
           </span>
         </div>

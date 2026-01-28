@@ -6,14 +6,19 @@ import { Scoreboard } from './Scoreboard';
 import { SecondChanceModal } from './SecondChanceModal';
 import { GameOverModal } from './GameOverModal';
 import { TurnTimer } from './TurnTimer';
+import { ActivityLog } from './ActivityLog';
+import { RoundSummaryModal } from './RoundSummaryModal';
+import { HelpModal } from './HelpModal';
 import './GameBoard.css';
 import './Modal.css';
+import './HelpModal.css';
 
 export function GameBoard() {
-  const { state, hit, pass, leaveRoom } = useGame();
-  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer } = state;
+  const { state, dispatch, hit, pass, leaveRoom } = useGame();
+  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary } = state;
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   if (!gameState) return null;
 
@@ -91,11 +96,11 @@ export function GameBoard() {
 
           {canAct && (
             <div className="action-buttons">
-              <button className="primary hit-btn" onClick={hit} title="Press H">
-                HIT <span className="shortcut-hint">(H)</span>
+              <button className="primary hit-btn" onClick={hit} disabled={pendingAction} title="Press H">
+                {pendingAction ? <span className="btn-spinner" /> : <>HIT <span className="shortcut-hint">(H)</span></>}
               </button>
-              <button className="secondary pass-btn" onClick={pass} title="Press P">
-                PASS <span className="shortcut-hint">(P)</span>
+              <button className="secondary pass-btn" onClick={pass} disabled={pendingAction} title="Press P">
+                {pendingAction ? <span className="btn-spinner" /> : <>PASS <span className="shortcut-hint">(P)</span></>}
               </button>
             </div>
           )}
@@ -114,12 +119,25 @@ export function GameBoard() {
         )}
       </div>
 
-      <Scoreboard players={gameState.players} currentPlayerId={playerId} />
+      <Scoreboard players={gameState.players} currentPlayerId={playerId} targetScore={gameState.settings.targetScore} />
+      <ActivityLog entries={activityLog} />
+
+      <button className="help-btn" onClick={() => setShowHelp(true)}>
+        ? Help
+      </button>
 
       {secondChancePrompt && <SecondChanceModal duplicateCard={secondChancePrompt.duplicateCard} />}
+      {showRoundSummary && roundEndData && (
+        <RoundSummaryModal
+          data={roundEndData}
+          currentPlayerId={playerId}
+          onContinue={() => dispatch({ type: 'SHOW_ROUND_SUMMARY', payload: false })}
+        />
+      )}
       {gameState.phase === 'GAME_END' && gameState.winnerId && (
         <GameOverModal winnerId={gameState.winnerId} players={gameState.players} />
       )}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       {showLeaveConfirm && (
         <div className="modal-overlay">

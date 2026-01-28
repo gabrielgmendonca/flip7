@@ -50,6 +50,21 @@
   color: var(--color-text-muted);
 }
 
+.unique-count.flip-seven-ready {
+  color: var(--color-warning);
+  font-weight: bold;
+  animation: flip-seven-glow 1s ease-in-out infinite;
+}
+
+@keyframes flip-seven-glow {
+  0%, 100% {
+    text-shadow: 0 0 4px var(--color-warning);
+  }
+  50% {
+    text-shadow: 0 0 12px var(--color-warning), 0 0 20px var(--color-warning);
+  }
+}
+
 .status-badge {
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;

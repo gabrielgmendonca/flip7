@@ -15,15 +15,15 @@ Quality of Experience features for the game round screen.
 
 ## Medium Effort
 
-- [ ] **Target score progress** - Progress bar showing how close each player is to winning (200 points)
-- [ ] **Flip 7 glow effect** - Pulse/glow the "Unique: 6/7" indicator when one card away from the bonus
-- [ ] **Activity log** - Small feed showing recent actions ("Alice drew 5", "Bob passed", "Carol busted!")
-- [ ] **Score change animation** - Floating "+15" when getting bonuses, show round score delta
-- [ ] **Toast notification system** - Replace static error messages with dismissible toasts for all events
-- [ ] **In-game help modal** - Quick rules reference accessible during gameplay
-- [ ] **Pending action indicator** - Spinner on Hit/Pass buttons while server processes
-- [ ] **Round summary modal** - Brief recap at round end showing who gained/lost what
-- [ ] **Rematch button** - Quick restart with same players after game ends
+- [x] **Target score progress** - Progress bar showing how close each player is to winning (200 points)
+- [x] **Flip 7 glow effect** - Pulse/glow the "Unique: 6/7" indicator when one card away from the bonus
+- [x] **Activity log** - Small feed showing recent actions ("Alice drew 5", "Bob passed", "Carol busted!")
+- [x] **Score change animation** - Floating "+15" when getting bonuses, show round score delta
+- [x] **Toast notification system** - Replace static error messages with dismissible toasts for all events
+- [x] **In-game help modal** - Quick rules reference accessible during gameplay
+- [x] **Pending action indicator** - Spinner on Hit/Pass buttons while server processes
+- [x] **Round summary modal** - Brief recap at round end showing who gained/lost what
+- [x] **Rematch button** - Quick restart with same players after game ends
 
 ## Higher Effort / Polish
 

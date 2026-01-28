@@ -1,0 +1,32 @@
+.score-animation-container {
+  position: absolute;
+  right: 0;
+  top: -0.5rem;
+  pointer-events: none;
+}
+
+.score-float {
+  position: absolute;
+  right: 0;
+  font-weight: bold;
+  font-size: 1.25rem;
+  color: var(--color-secondary);
+  text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  animation: floatUp 1.5s ease-out forwards;
+  white-space: nowrap;
+}
+
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-15px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+}

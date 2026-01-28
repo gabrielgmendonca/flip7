@@ -29,12 +29,6 @@ export function Home() {
           </div>
         )}
 
-        {state.error && (
-          <div className="error-message">
-            {state.error}
-            <button onClick={() => dispatch({ type: 'CLEAR_ERROR' })}>Dismiss</button>
-          </div>
-        )}
 
         <div className="name-input-container">
           <label htmlFor="playerName">Your Name</label>

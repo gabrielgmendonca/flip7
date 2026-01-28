@@ -9,10 +9,13 @@ interface GameOverModalProps {
 }
 
 export function GameOverModal({ winnerId, players }: GameOverModalProps) {
-  const { state, leaveRoom } = useGame();
+  const { state, leaveRoom, rematch } = useGame();
   const winner = players.find((p) => p.id === winnerId);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const isWinner = winnerId === state.playerId;
+  const isHost = state.room?.hostId === state.playerId;
+  const connectedCount = players.filter((p) => p.isConnected).length;
+  const canRematch = isHost && connectedCount >= 3;
 
   return (
     <div className="modal-overlay">
@@ -39,9 +42,19 @@ export function GameOverModal({ winnerId, players }: GameOverModalProps) {
           </ol>
         </div>
 
-        <button className="primary" onClick={leaveRoom}>
-          Return to Home
-        </button>
+        <div className="modal-actions">
+          {canRematch && (
+            <button className="primary" onClick={rematch}>
+              Rematch
+            </button>
+          )}
+          {isHost && !canRematch && connectedCount < 3 && (
+            <span className="rematch-hint">Need 3+ players for rematch</span>
+          )}
+          <button className={canRematch ? 'secondary' : 'primary'} onClick={leaveRoom}>
+            Leave
+          </button>
+        </div>
       </div>
     </div>
   );

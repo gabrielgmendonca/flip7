@@ -213,4 +213,32 @@ export function registerGameHandlers(
       }
     }
   });
+
+  socket.on('game:rematch', () => {
+    console.log('game:rematch received from', socket.id);
+
+    const game = roomManager.rematch(socket.id);
+
+    if (!game) {
+      socket.emit('room:error', { message: 'Unable to start rematch. You may not be the host or need more players.' });
+      return;
+    }
+
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) {
+      return;
+    }
+
+    const gameState = game.getState() as PublicGameState;
+    io.to(roomCode).emit('game:started', { gameState });
+
+    // Send turn start to current player
+    const currentPlayer = game.getCurrentPlayer();
+    if (currentPlayer) {
+      io.to(roomCode).emit('game:turnStart', {
+        playerId: currentPlayer.id,
+        timeoutSeconds: gameState.settings.turnTimeoutSeconds,
+      });
+    }
+  });
 }

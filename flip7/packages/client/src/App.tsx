@@ -3,10 +3,10 @@ import { GameProvider, useGame } from './context/GameContext';
 import { Home } from './components/home/Home';
 import { Lobby } from './components/lobby/Lobby';
 import { GameBoard } from './components/game/GameBoard';
-import { Toast } from './components/common/Toast';
+import { ToastContainer } from './components/common/ToastContainer';
 
 function AppContent() {
-  const { state, dispatch } = useGame();
+  const { state, removeToast } = useGame();
 
   const renderScreen = () => {
     switch (state.screen) {
@@ -24,13 +24,7 @@ function AppContent() {
   return (
     <>
       {renderScreen()}
-      {state.showReconnectedToast && (
-        <Toast
-          message="Connection restored"
-          type="success"
-          onClose={() => dispatch({ type: 'CLEAR_RECONNECTED_TOAST' })}
-        />
-      )}
+      <ToastContainer toasts={state.toasts} onRemove={removeToast} />
     </>
   );
 }

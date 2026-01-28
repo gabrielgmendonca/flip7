@@ -15,6 +15,7 @@ export interface ClientToServerEvents {
   'game:start': () => void;
   'game:action': (data: { action: 'hit' | 'pass' }) => void;
   'game:useSecondChance': (data: { use: boolean }) => void;
+  'game:rematch': () => void;
 
   // Connection events
   'connection:reconnect': (data: { token: string; roomCode: string }) => void;

@@ -132,3 +132,9 @@
   font-weight: bold;
   font-size: 1.1rem;
 }
+
+.rematch-hint {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}

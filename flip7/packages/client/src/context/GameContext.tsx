@@ -11,6 +11,23 @@ import { useSocket } from '../hooks/useSocket';
 
 type Screen = 'home' | 'lobby' | 'game';
 
+export interface ToastItem {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface RoundEndData {
+  round: number;
+  scores: { playerId: string; playerName: string; roundScore: number; totalScore: number; previousScore: number }[];
+}
+
 interface State {
   screen: Screen;
   playerId: string | null;
@@ -23,6 +40,11 @@ interface State {
   secondChancePrompt: { duplicateCard: Card } | null;
   showReconnectedToast: boolean;
   turnTimer: { startTime: number; timeoutSeconds: number } | null;
+  toasts: ToastItem[];
+  activityLog: ActivityLogEntry[];
+  pendingAction: boolean;
+  roundEndData: RoundEndData | null;
+  showRoundSummary: boolean;
 }
 
 type Action =
@@ -45,7 +67,16 @@ type Action =
   | { type: 'CLEAR_DRAWN_CARD' }
   | { type: 'CLEAR_RECONNECTED_TOAST' }
   | { type: 'TURN_START'; payload: { timeoutSeconds: number } }
-  | { type: 'CLEAR_TURN_TIMER' };
+  | { type: 'CLEAR_TURN_TIMER' }
+  | { type: 'ADD_TOAST'; payload: { message: string; type: 'success' | 'error' | 'info' } }
+  | { type: 'REMOVE_TOAST'; payload: string }
+  | { type: 'ADD_ACTIVITY'; payload: string }
+  | { type: 'SET_PENDING_ACTION'; payload: boolean }
+  | { type: 'SET_ROUND_END_DATA'; payload: RoundEndData }
+  | { type: 'SHOW_ROUND_SUMMARY'; payload: boolean }
+  | { type: 'PLAYER_PASSED'; payload: { playerId: string; playerName: string; roundScore: number } }
+  | { type: 'PLAYER_BUSTED'; payload: { playerId: string; playerName: string } }
+  | { type: 'PLAYER_FROZEN'; payload: { playerId: string; playerName: string; frozenScore: number } };
 
 const initialState: State = {
   screen: 'home',
@@ -59,7 +90,15 @@ const initialState: State = {
   secondChancePrompt: null,
   showReconnectedToast: false,
   turnTimer: null,
+  toasts: [],
+  activityLog: [],
+  pendingAction: false,
+  roundEndData: null,
+  showRoundSummary: false,
 };
+
+let toastIdCounter = 0;
+let activityIdCounter = 0;
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -126,6 +165,9 @@ function reducer(state: State, action: Action): State {
         ...state,
         screen: 'game',
         gameState: action.payload.gameState,
+        activityLog: [],
+        roundEndData: null,
+        showRoundSummary: false,
       };
 
     case 'GAME_STATE_UPDATE':
@@ -203,6 +245,66 @@ function reducer(state: State, action: Action): State {
     case 'CLEAR_ERROR':
       return { ...state, error: null };
 
+    case 'ADD_TOAST':
+      return {
+        ...state,
+        toasts: [
+          ...state.toasts,
+          { id: `toast-${++toastIdCounter}`, message: action.payload.message, type: action.payload.type },
+        ].slice(-5), // Keep max 5 toasts
+      };
+
+    case 'REMOVE_TOAST':
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.payload),
+      };
+
+    case 'ADD_ACTIVITY':
+      return {
+        ...state,
+        activityLog: [
+          { id: `activity-${++activityIdCounter}`, message: action.payload, timestamp: Date.now() },
+          ...state.activityLog,
+        ].slice(0, 20), // Keep max 20 entries
+      };
+
+    case 'SET_PENDING_ACTION':
+      return { ...state, pendingAction: action.payload };
+
+    case 'SET_ROUND_END_DATA':
+      return { ...state, roundEndData: action.payload };
+
+    case 'SHOW_ROUND_SUMMARY':
+      return { ...state, showRoundSummary: action.payload };
+
+    case 'PLAYER_PASSED':
+      return {
+        ...state,
+        activityLog: [
+          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} passed with ${action.payload.roundScore} points`, timestamp: Date.now() },
+          ...state.activityLog,
+        ].slice(0, 20),
+      };
+
+    case 'PLAYER_BUSTED':
+      return {
+        ...state,
+        activityLog: [
+          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} busted!`, timestamp: Date.now() },
+          ...state.activityLog,
+        ].slice(0, 20),
+      };
+
+    case 'PLAYER_FROZEN':
+      return {
+        ...state,
+        activityLog: [
+          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} froze with ${action.payload.frozenScore} points`, timestamp: Date.now() },
+          ...state.activityLog,
+        ].slice(0, 20),
+      };
+
     default:
       return state;
   }
@@ -221,6 +323,9 @@ interface GameContextType {
   kickPlayer: (playerId: string) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
   isConnected: boolean;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  removeToast: (id: string) => void;
+  rematch: () => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -230,6 +335,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const { isConnected, emit, on } = useSocket();
 
   useEffect(() => {
+    const getPlayerName = (playerId: string) => {
+      const player = state.gameState?.players.find((p) => p.id === playerId);
+      return player?.name || 'Unknown';
+    };
+
     const unsubs = [
       on('room:created', (data) => dispatch({ type: 'ROOM_CREATED', payload: data })),
       on('room:joined', (data) => dispatch({ type: 'ROOM_JOINED', payload: data })),
@@ -238,7 +348,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       on('room:playerKicked', (data) => {
         if (data.playerId === state.playerId) {
           dispatch({ type: 'LEFT_ROOM' });
-          dispatch({ type: 'SET_ERROR', payload: 'You were kicked from the room.' });
+          dispatch({ type: 'ADD_TOAST', payload: { message: 'You were kicked from the room.', type: 'error' } });
         } else {
           dispatch({ type: 'PLAYER_LEFT', payload: data });
         }
@@ -251,21 +361,56 @@ export function GameProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('flip7_reconnect_token');
           localStorage.removeItem('flip7_room_code');
         }
-        dispatch({ type: 'SET_ERROR', payload: data.message });
+        dispatch({ type: 'ADD_TOAST', payload: { message: data.message, type: 'error' } });
       }),
-      on('game:started', (data) => dispatch({ type: 'GAME_STARTED', payload: data })),
-      on('game:stateUpdate', (data) => dispatch({ type: 'GAME_STATE_UPDATE', payload: data })),
-      on('game:cardDrawn', (data) => dispatch({ type: 'CARD_DRAWN', payload: data })),
+      on('game:started', (data) => {
+        dispatch({ type: 'GAME_STARTED', payload: data });
+        dispatch({ type: 'ADD_ACTIVITY', payload: 'Game started!' });
+      }),
+      on('game:stateUpdate', (data) => {
+        dispatch({ type: 'GAME_STATE_UPDATE', payload: data });
+        dispatch({ type: 'SET_PENDING_ACTION', payload: false });
+      }),
+      on('game:cardDrawn', (data) => {
+        dispatch({ type: 'CARD_DRAWN', payload: data });
+        const playerName = getPlayerName(data.playerId);
+        const cardDesc = data.card.type === 'number' ? data.card.value.toString() :
+          data.card.type === 'action' ? data.card.action :
+          data.card.modifier === 'x2' ? 'x2' : `+${data.card.modifier}`;
+        dispatch({ type: 'ADD_ACTIVITY', payload: `${playerName} drew ${cardDesc}` });
+      }),
       on('game:secondChancePrompt', (data) => dispatch({ type: 'SECOND_CHANCE_PROMPT', payload: data })),
       on('game:secondChanceUsed', () => dispatch({ type: 'CLEAR_SECOND_CHANCE' })),
       on('game:turnStart', (data) => dispatch({ type: 'TURN_START', payload: data })),
-      on('connection:reconnected', (data) => dispatch({ type: 'RECONNECTED', payload: data })),
+      on('game:playerPassed', (data) => {
+        dispatch({ type: 'PLAYER_PASSED', payload: { ...data, playerName: getPlayerName(data.playerId) } });
+      }),
+      on('game:playerBusted', (data) => {
+        dispatch({ type: 'PLAYER_BUSTED', payload: { playerId: data.playerId, playerName: getPlayerName(data.playerId) } });
+      }),
+      on('game:playerFrozen', (data) => {
+        dispatch({ type: 'PLAYER_FROZEN', payload: { ...data, playerName: getPlayerName(data.playerId) } });
+      }),
+      on('game:roundEnd', (data) => {
+        const scoresWithNames = data.scores.map((s) => ({
+          ...s,
+          playerName: getPlayerName(s.playerId),
+          previousScore: s.totalScore - s.roundScore,
+        }));
+        dispatch({ type: 'SET_ROUND_END_DATA', payload: { round: data.round, scores: scoresWithNames } });
+        dispatch({ type: 'SHOW_ROUND_SUMMARY', payload: true });
+        dispatch({ type: 'ADD_ACTIVITY', payload: `Round ${data.round} ended` });
+      }),
+      on('connection:reconnected', (data) => {
+        dispatch({ type: 'RECONNECTED', payload: data });
+        dispatch({ type: 'ADD_TOAST', payload: { message: 'Connection restored', type: 'success' } });
+      }),
     ];
 
     return () => {
       unsubs.forEach((unsub) => unsub());
     };
-  }, [on, state.playerId]);
+  }, [on, state.playerId, state.gameState?.players]);
 
   const createRoom = () => {
     if (!state.playerName.trim()) {
@@ -293,11 +438,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   const hit = () => {
+    dispatch({ type: 'SET_PENDING_ACTION', payload: true });
     emit('game:action', { action: 'hit' });
   };
 
   const pass = () => {
+    dispatch({ type: 'SET_PENDING_ACTION', payload: true });
     emit('game:action', { action: 'pass' });
+  };
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info') => {
+    dispatch({ type: 'ADD_TOAST', payload: { message, type } });
+  };
+
+  const removeToast = (id: string) => {
+    dispatch({ type: 'REMOVE_TOAST', payload: id });
   };
 
   const useSecondChance = (use: boolean) => {
@@ -311,6 +466,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const updateSettings = (settings: Partial<GameSettings>) => {
     emit('room:updateSettings', settings);
+  };
+
+  const rematch = () => {
+    emit('game:rematch');
   };
 
   return (
@@ -328,6 +487,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         kickPlayer,
         updateSettings,
         isConnected,
+        addToast,
+        removeToast,
+        rematch,
       }}
     >
       {children}

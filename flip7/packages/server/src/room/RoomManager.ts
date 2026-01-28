@@ -225,6 +225,58 @@ export class RoomManager {
     return this.games.get(roomCode);
   }
 
+  rematch(hostId: string): Game | null {
+    const roomCode = this.playerToRoom.get(hostId);
+    if (!roomCode) {
+      return null;
+    }
+
+    const room = this.rooms.get(roomCode);
+    if (!room || room.hostId !== hostId) {
+      return null;
+    }
+
+    // Clean up old game
+    const oldGame = this.games.get(roomCode);
+    if (oldGame) {
+      oldGame.cleanup();
+      this.games.delete(roomCode);
+    }
+
+    // Reset room state
+    room.gameState = null;
+
+    // Only include connected players
+    const connectedPlayers = room.players.filter((p) => p.isConnected);
+    if (connectedPlayers.length < 3) {
+      return null;
+    }
+
+    const gamePlayers: GamePlayer[] = connectedPlayers.map((p) => {
+      // Find reconnect token for this player
+      let token = '';
+      for (const [t, data] of this.reconnectTokens.entries()) {
+        if (data.playerId === p.id) {
+          token = t;
+          break;
+        }
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        reconnectToken: token,
+      };
+    });
+
+    const game = new Game(gamePlayers, room.settings);
+    game.startGame();
+
+    this.games.set(roomCode, game);
+    room.gameState = game.getState();
+
+    return game;
+  }
+
   getRoom(roomCode: string): Room | undefined {
     return this.rooms.get(roomCode);
   }
