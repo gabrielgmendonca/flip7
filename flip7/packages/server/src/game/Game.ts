@@ -46,6 +46,7 @@ export class Game {
   };
   private flipThreeRemaining: number = 0;
   private winnerId?: string;
+  private roundStartTimeout?: ReturnType<typeof setTimeout>;
 
   constructor(gamePlayers: GamePlayer[], settings: Partial<GameSettings> = {}) {
     this.settings = { ...DEFAULT_GAME_SETTINGS, ...settings };
@@ -550,7 +551,35 @@ export class Game {
     } else {
       // Start next round
       this.dealerIndex = (this.dealerIndex + 1) % this.players.length;
-      setTimeout(() => this.startNewRound(), 3000);
+      this.roundStartTimeout = setTimeout(() => {
+        this.roundStartTimeout = undefined;
+        this.startNewRound();
+      }, 3000);
+    }
+  }
+
+  /**
+   * Clean up any pending timeouts. Call this when the game is being destroyed.
+   */
+  cleanup(): void {
+    if (this.roundStartTimeout) {
+      clearTimeout(this.roundStartTimeout);
+      this.roundStartTimeout = undefined;
+    }
+  }
+
+  /**
+   * Update a player's ID (used for reconnection with new socket ID).
+   */
+  updatePlayerId(oldId: string, newId: string): void {
+    const player = this.players.find((p) => p.id === oldId);
+    if (player) {
+      player.id = newId;
+    }
+
+    // Update pendingSecondChance if it references the old ID
+    if (this.pendingSecondChance?.playerId === oldId) {
+      this.pendingSecondChance.playerId = newId;
     }
   }
 

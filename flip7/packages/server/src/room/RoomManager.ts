@@ -110,7 +110,11 @@ export class RoomManager {
 
     if (room.players.length === 0) {
       this.rooms.delete(roomCode);
-      this.games.delete(roomCode);
+      const game = this.games.get(roomCode);
+      if (game) {
+        game.cleanup();
+        this.games.delete(roomCode);
+      }
       return { room: null, wasHost };
     }
 
@@ -187,7 +191,7 @@ export class RoomManager {
       return null;
     }
 
-    if (room.players.length < 2) {
+    if (room.players.length < 3) {
       console.log('Not enough players:', room.players.length);
       return null;
     }
@@ -278,10 +282,7 @@ export class RoomManager {
     const game = this.games.get(tokenData.roomCode);
     if (game) {
       game.playerReconnected(oldPlayerId);
-      const gamePlayer = game.getPlayer(oldPlayerId);
-      if (gamePlayer) {
-        (gamePlayer as any).id = newSocketId;
-      }
+      game.updatePlayerId(oldPlayerId, newSocketId);
     }
 
     // Update token mapping
