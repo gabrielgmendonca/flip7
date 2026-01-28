@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import './Lobby.css';
 
 export function Lobby() {
   const { state, leaveRoom, startGame, kickPlayer, updateSettings } = useGame();
   const { room, playerId } = state;
+  const [copied, setCopied] = useState(false);
 
   if (!room) return null;
 
@@ -13,6 +14,8 @@ export function Lobby() {
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(room.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -22,8 +25,8 @@ export function Lobby() {
         <div className="room-code-container">
           <span className="room-code-label">Room Code:</span>
           <span className="room-code">{room.code}</span>
-          <button className="secondary" onClick={handleCopyCode}>
-            Copy
+          <button className={`secondary ${copied ? 'copied' : ''}`} onClick={handleCopyCode}>
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
       </div>
