@@ -214,7 +214,7 @@ describe('calculateRoundScore', () => {
 describe('DEFAULT_GAME_SETTINGS', () => {
   it('should have correct default values', () => {
     expect(DEFAULT_GAME_SETTINGS.targetScore).toBe(200);
-    expect(DEFAULT_GAME_SETTINGS.maxPlayers).toBe(6);
+    expect(DEFAULT_GAME_SETTINGS.maxPlayers).toBe(10);
     expect(DEFAULT_GAME_SETTINGS.turnTimeoutSeconds).toBe(30);
   });
 });

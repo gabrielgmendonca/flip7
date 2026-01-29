@@ -121,12 +121,12 @@ describe('RoomManager', () => {
     });
 
     it('should not allow joining a full room', () => {
-      // Fill the room to max (6 players)
-      for (let i = 2; i <= 6; i++) {
+      // Fill the room to max (10 players)
+      for (let i = 2; i <= 10; i++) {
         roomManager.joinRoom(roomCode, `player-${i}`, `Player ${i}`);
       }
 
-      const result = roomManager.joinRoom(roomCode, 'player-7', 'Player 7');
+      const result = roomManager.joinRoom(roomCode, 'player-11', 'Player 11');
       expect(result).toBeNull();
     });
 

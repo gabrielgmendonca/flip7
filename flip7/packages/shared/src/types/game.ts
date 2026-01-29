@@ -31,7 +31,7 @@ export interface GameSettings {
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   targetScore: 200,
-  maxPlayers: 6,
+  maxPlayers: 10,
   turnTimeoutSeconds: 30,
 };
 

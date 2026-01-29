@@ -81,7 +81,7 @@ describe('Game', () => {
 
     it('should use default settings when not provided', () => {
       expect(game.getState().settings.targetScore).toBe(200);
-      expect(game.getState().settings.maxPlayers).toBe(6);
+      expect(game.getState().settings.maxPlayers).toBe(10);
     });
   });
 
@@ -605,18 +605,18 @@ describe('Game', () => {
       const settings = customGame.getState().settings;
 
       expect(settings.targetScore).toBe(50);
-      expect(settings.maxPlayers).toBe(6); // Default
+      expect(settings.maxPlayers).toBe(10); // Default
       expect(settings.turnTimeoutSeconds).toBe(30); // Default
     });
   });
 
   describe('edge cases', () => {
     it('should handle game with maximum players', () => {
-      const sixPlayers = createPlayers(6);
-      const bigGame = new Game(sixPlayers);
+      const tenPlayers = createPlayers(10);
+      const bigGame = new Game(tenPlayers);
 
       expect(() => bigGame.startGame()).not.toThrow();
-      expect(bigGame.getState().players.length).toBe(6);
+      expect(bigGame.getState().players.length).toBe(10);
     });
 
     it('should handle rapid hit/pass cycles', () => {
