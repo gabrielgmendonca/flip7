@@ -13,6 +13,7 @@ export interface ClientToServerEvents {
 
   // Game events
   'game:start': () => void;
+  'game:startDebug': () => void;
   'game:action': (data: { action: 'hit' | 'pass' }) => void;
   'game:useSecondChance': (data: { use: boolean }) => void;
   'game:selectFreezeTarget': (data: { targetPlayerId: string }) => void;

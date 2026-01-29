@@ -132,3 +132,14 @@
 .lobby-actions button {
   flex: 1;
 }
+
+.debug-btn {
+  background: var(--color-warning);
+  color: black;
+  border-color: var(--color-warning);
+}
+
+.debug-btn:hover {
+  background: #d97706;
+  border-color: #d97706;
+}

@@ -4,7 +4,7 @@ import { ValidatedInput, validationRules } from '../common/ValidatedInput';
 import './Lobby.css';
 
 export function Lobby() {
-  const { state, leaveRoom, startGame, kickPlayer, updateSettings } = useGame();
+  const { state, leaveRoom, startGame, startDebugGame, kickPlayer, updateSettings } = useGame();
   const { room, playerId } = state;
   const [copied, setCopied] = useState(false);
 
@@ -97,9 +97,16 @@ export function Lobby() {
           Leave Room
         </button>
         {isHost && (
-          <button className="primary" onClick={startGame} disabled={!canStart}>
-            {canStart ? 'Start Game' : 'Need 3+ Players'}
-          </button>
+          <>
+            <button className="primary" onClick={startGame} disabled={!canStart}>
+              {canStart ? 'Start Game' : 'Need 3+ Players'}
+            </button>
+            {!canStart && (
+              <button className="secondary debug-btn" onClick={startDebugGame}>
+                Debug Match
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

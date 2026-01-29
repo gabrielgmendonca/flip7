@@ -1,6 +1,6 @@
 .scoreboard {
   position: fixed;
-  top: 1rem;
+  top: 4rem;
   right: 1rem;
   background: var(--color-surface);
   border-radius: 0.5rem;
