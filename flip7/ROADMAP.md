@@ -81,7 +81,10 @@
 
 ## Known Issues
 
-*No known issues at this time. Report bugs via GitHub issues.*
+### Action Card Targeting
+- [ ] **Flip Three**: Should allow player to choose any active player as target (currently only affects self)
+- [ ] **Freeze**: Should allow player to choose any active player as target
+- [ ] Per official rules: "Action cards can be played on **any active player** including yourself. If you are the only active player in the round, you **must** play the Action card on yourself."
 
 ---
 
