@@ -114,11 +114,21 @@ export function registerGameHandlers(
       }
 
       if (result.triggersFreeze) {
-        const player = game.getPlayer(socket.id);
-        io.to(roomCode).emit('game:playerFrozen', {
-          playerId: socket.id,
-          frozenScore: player?.roundScore || 0,
-        });
+        const updatedState = game.getState();
+        if (updatedState.pendingFreezeTarget) {
+          // Player needs to select a freeze target
+          io.to(roomCode).emit('game:freezeTargetPrompt', {
+            playerId: socket.id,
+            eligibleTargets: updatedState.pendingFreezeTarget.eligibleTargets,
+          });
+        } else {
+          // Auto-frozen (only one eligible target)
+          const player = game.getPlayer(socket.id);
+          io.to(roomCode).emit('game:playerFrozen', {
+            playerId: socket.id,
+            frozenScore: player?.roundScore || 0,
+          });
+        }
       }
 
       if (result.triggersFlipThree) {
@@ -221,6 +231,74 @@ export function registerGameHandlers(
     io.to(roomCode).emit('game:stateUpdate', { gameState: newGameState });
 
     // Send next turn start
+    if (newGameState.phase === 'PLAYER_TURN') {
+      const nextPlayer = game.getCurrentPlayer();
+      if (nextPlayer) {
+        io.to(roomCode).emit('game:turnStart', {
+          playerId: nextPlayer.id,
+          timeoutSeconds: newGameState.settings.turnTimeoutSeconds,
+        });
+      }
+    }
+  });
+
+  socket.on('game:selectFreezeTarget', ({ targetPlayerId }) => {
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) {
+      return;
+    }
+
+    const game = roomManager.getGame(roomCode);
+    if (!game) {
+      return;
+    }
+
+    const gameState = game.getState();
+    if (!gameState.pendingFreezeTarget || gameState.pendingFreezeTarget.playerId !== socket.id) {
+      socket.emit('room:error', { message: 'No freeze target selection pending for you.' });
+      return;
+    }
+
+    const success = game.selectFreezeTarget(socket.id, targetPlayerId);
+
+    if (!success) {
+      socket.emit('room:error', { message: 'Unable to select freeze target.' });
+      return;
+    }
+
+    const targetPlayer = game.getPlayer(targetPlayerId);
+    io.to(roomCode).emit('game:playerFrozen', {
+      playerId: targetPlayerId,
+      frozenScore: targetPlayer?.roundScore || 0,
+    });
+
+    // Send updated game state
+    const newGameState = game.getState() as PublicGameState;
+    io.to(roomCode).emit('game:stateUpdate', { gameState: newGameState });
+
+    // Check for round end or game end
+    if (newGameState.phase === 'ROUND_END') {
+      io.to(roomCode).emit('game:roundEnd', {
+        round: newGameState.round,
+        scores: newGameState.players.map((p) => ({
+          playerId: p.id,
+          roundScore: p.roundScore,
+          totalScore: p.score,
+        })),
+      });
+    }
+
+    if (newGameState.phase === 'GAME_END' && newGameState.winnerId) {
+      io.to(roomCode).emit('game:ended', {
+        winnerId: newGameState.winnerId,
+        finalScores: newGameState.players.map((p) => ({
+          playerId: p.id,
+          score: p.score,
+        })),
+      });
+    }
+
+    // Send next turn start if game continues
     if (newGameState.phase === 'PLAYER_TURN') {
       const nextPlayer = game.getCurrentPlayer();
       if (nextPlayer) {

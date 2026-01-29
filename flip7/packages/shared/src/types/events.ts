@@ -15,6 +15,7 @@ export interface ClientToServerEvents {
   'game:start': () => void;
   'game:action': (data: { action: 'hit' | 'pass' }) => void;
   'game:useSecondChance': (data: { use: boolean }) => void;
+  'game:selectFreezeTarget': (data: { targetPlayerId: string }) => void;
   'game:rematch': () => void;
 
   // Connection events
@@ -48,6 +49,7 @@ export interface ServerToClientEvents {
   'game:playerFrozen': (data: { playerId: string; frozenScore: number }) => void;
   'game:secondChancePrompt': (data: { playerId: string; duplicateCard: Card }) => void;
   'game:secondChanceUsed': (data: { playerId: string; discardedCard: Card }) => void;
+  'game:freezeTargetPrompt': (data: { playerId: string; eligibleTargets: string[] }) => void;
   'game:flipThreeStart': (data: { playerId: string; cardsRemaining: number }) => void;
   'game:roundEnd': (data: {
     round: number;

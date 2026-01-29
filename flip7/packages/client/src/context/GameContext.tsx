@@ -38,6 +38,7 @@ interface State {
   error: string | null;
   lastDrawnCard: { card: Card; playedCard: PlayedCard; isBust: boolean } | null;
   secondChancePrompt: { duplicateCard: Card } | null;
+  freezeTargetPrompt: { eligibleTargets: string[] } | null;
   showReconnectedToast: boolean;
   turnTimer: { startTime: number; timeoutSeconds: number } | null;
   toasts: ToastItem[];
@@ -61,6 +62,8 @@ type Action =
   | { type: 'CARD_DRAWN'; payload: { playerId: string; card: Card; playedCard: PlayedCard; isBust: boolean } }
   | { type: 'SECOND_CHANCE_PROMPT'; payload: { duplicateCard: Card } }
   | { type: 'CLEAR_SECOND_CHANCE' }
+  | { type: 'FREEZE_TARGET_PROMPT'; payload: { eligibleTargets: string[] } }
+  | { type: 'CLEAR_FREEZE_TARGET' }
   | { type: 'RECONNECTED'; payload: { room: PublicRoom; gameState: PublicGameState | null; playerId: string } }
   | { type: 'LEFT_ROOM' }
   | { type: 'SET_ERROR'; payload: string }
@@ -90,6 +93,7 @@ const initialState: State = {
   error: null,
   lastDrawnCard: null,
   secondChancePrompt: null,
+  freezeTargetPrompt: null,
   showReconnectedToast: false,
   turnTimer: null,
   toasts: [],
@@ -199,6 +203,15 @@ function reducer(state: State, action: Action): State {
 
     case 'CLEAR_SECOND_CHANCE':
       return { ...state, secondChancePrompt: null };
+
+    case 'FREEZE_TARGET_PROMPT':
+      return {
+        ...state,
+        freezeTargetPrompt: { eligibleTargets: action.payload.eligibleTargets },
+      };
+
+    case 'CLEAR_FREEZE_TARGET':
+      return { ...state, freezeTargetPrompt: null };
 
     case 'CLEAR_DRAWN_CARD':
       return { ...state, lastDrawnCard: null };
@@ -328,6 +341,7 @@ interface GameContextType {
   hit: () => void;
   pass: () => void;
   useSecondChance: (use: boolean) => void;
+  selectFreezeTarget: (targetPlayerId: string) => void;
   kickPlayer: (playerId: string) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
   isConnected: boolean;
@@ -390,6 +404,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }),
       on('game:secondChancePrompt', (data) => dispatch({ type: 'SECOND_CHANCE_PROMPT', payload: data })),
       on('game:secondChanceUsed', () => dispatch({ type: 'CLEAR_SECOND_CHANCE' })),
+      on('game:freezeTargetPrompt', (data) => dispatch({ type: 'FREEZE_TARGET_PROMPT', payload: data })),
       on('game:turnStart', (data) => dispatch({ type: 'TURN_START', payload: data })),
       on('game:playerPassed', (data) => {
         dispatch({ type: 'PLAYER_PASSED', payload: { ...data, playerName: getPlayerName(data.playerId) } });
@@ -469,6 +484,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_SECOND_CHANCE' });
   };
 
+  const selectFreezeTarget = (targetPlayerId: string) => {
+    emit('game:selectFreezeTarget', { targetPlayerId });
+    dispatch({ type: 'CLEAR_FREEZE_TARGET' });
+  };
+
   const kickPlayer = (playerId: string) => {
     emit('room:kick', { playerId });
   };
@@ -497,6 +517,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         hit,
         pass,
         useSecondChance,
+        selectFreezeTarget,
         kickPlayer,
         updateSettings,
         isConnected,

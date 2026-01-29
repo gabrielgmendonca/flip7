@@ -5,6 +5,7 @@ export type GamePhase =
   | 'DEALING'
   | 'PLAYER_TURN'
   | 'AWAITING_SECOND_CHANCE'
+  | 'AWAITING_FREEZE_TARGET'
   | 'ROUND_END'
   | 'GAME_END';
 
@@ -46,6 +47,10 @@ export interface GameState {
   pendingSecondChance?: {
     playerId: string;
     duplicateCard: Card;
+  };
+  pendingFreezeTarget?: {
+    playerId: string;
+    eligibleTargets: string[];
   };
   flipThreeRemaining?: number;
   winnerId?: string;

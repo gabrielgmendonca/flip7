@@ -4,6 +4,7 @@ import { PlayedCardComponent, CardBack } from '../common/Card';
 import { PlayerArea } from './PlayerArea';
 import { Scoreboard } from './Scoreboard';
 import { SecondChanceModal } from './SecondChanceModal';
+import { FreezeTargetModal } from './FreezeTargetModal';
 import { GameOverModal } from './GameOverModal';
 import { TurnTimer } from './TurnTimer';
 import { ActivityLog } from './ActivityLog';
@@ -17,7 +18,7 @@ import './HelpModal.css';
 
 export function GameBoard() {
   const { state, dispatch, hit, pass, leaveRoom, toggleSound } = useGame();
-  const { gameState, playerId, secondChancePrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
+  const { gameState, playerId, secondChancePrompt, freezeTargetPrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
   const { playSound } = useSound(soundEnabled);
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -146,6 +147,9 @@ export function GameBoard() {
             {gameState.phase === 'AWAITING_SECOND_CHANCE' && (
               <span>Awaiting Second Chance decision...</span>
             )}
+            {gameState.phase === 'AWAITING_FREEZE_TARGET' && (
+              <span>Choose a player to freeze...</span>
+            )}
           </div>
 
           {canAct && (
@@ -181,6 +185,13 @@ export function GameBoard() {
       </button>
 
       {secondChancePrompt && <SecondChanceModal duplicateCard={secondChancePrompt.duplicateCard} />}
+      {freezeTargetPrompt && (
+        <FreezeTargetModal
+          eligibleTargets={freezeTargetPrompt.eligibleTargets}
+          players={gameState.players}
+          currentPlayerId={playerId}
+        />
+      )}
       {showRoundSummary && roundEndData && (
         <RoundSummaryModal
           data={roundEndData}
