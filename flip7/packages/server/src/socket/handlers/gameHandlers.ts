@@ -13,18 +13,79 @@ import { Game } from '../../game/Game';
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
+// Track turn timeouts per room
+const turnTimeouts = new Map<string, NodeJS.Timeout>();
+
 /**
- * Emit turn start event to all clients in the room.
+ * Clear any existing turn timeout for a room.
  */
-function emitTurnStart(io: TypedServer, roomCode: string, game: Game): void {
-  const currentPlayer = game.getCurrentPlayer();
-  if (currentPlayer) {
-    const gameState = game.getState() as PublicGameState;
-    io.to(roomCode).emit('game:turnStart', {
-      playerId: currentPlayer.id,
-      timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-    });
+function clearTurnTimeout(roomCode: string): void {
+  const existing = turnTimeouts.get(roomCode);
+  if (existing) {
+    clearTimeout(existing);
+    turnTimeouts.delete(roomCode);
   }
+}
+
+/**
+ * Emit turn start event to all clients in the room and start the turn timeout.
+ */
+function emitTurnStart(
+  io: TypedServer,
+  roomCode: string,
+  game: Game,
+  roomManager: RoomManager
+): void {
+  const currentPlayer = game.getCurrentPlayer();
+  if (!currentPlayer) return;
+
+  const gameState = game.getState() as PublicGameState;
+  const timeoutSeconds = gameState.settings.turnTimeoutSeconds;
+
+  io.to(roomCode).emit('game:turnStart', {
+    playerId: currentPlayer.id,
+    timeoutSeconds,
+  });
+
+  // Clear any existing timeout and start a new one
+  clearTurnTimeout(roomCode);
+
+  const timeout = setTimeout(() => {
+    turnTimeouts.delete(roomCode);
+
+    // Verify the game is still in the same state
+    const currentGame = roomManager.getGame(roomCode);
+    if (!currentGame) return;
+
+    const currentState = currentGame.getState();
+    if (currentState.phase !== 'PLAYER_TURN') return;
+
+    const playerToTimeout = currentGame.getCurrentPlayer();
+    if (!playerToTimeout || playerToTimeout.id !== currentPlayer.id) return;
+
+    // Auto-pass for the timed-out player
+    const success = currentGame.pass(currentPlayer.id);
+    if (!success) return;
+
+    io.to(roomCode).emit('game:playerPassed', {
+      playerId: currentPlayer.id,
+      roundScore: playerToTimeout.roundScore || 0,
+    });
+
+    // Send updated game state
+    const newGameState = currentGame.getState() as PublicGameState;
+    io.to(roomCode).emit('game:stateUpdate', { gameState: newGameState });
+
+    // Check for round end or game end
+    broadcastRoundAndGameEnd(io, roomCode, newGameState);
+
+    // Start next turn if game continues
+    if (newGameState.phase === 'PLAYER_TURN') {
+      emitTurnStart(io, roomCode, currentGame, roomManager);
+    }
+  }, timeoutSeconds * 1000);
+
+  turnTimeouts.set(roomCode, timeout);
 }
 
 /**
@@ -74,7 +135,7 @@ export function registerGameHandlers(
 
       const gameState = game.getState() as PublicGameState;
       io.to(roomCode).emit('game:stateUpdate', { gameState });
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     };
 
     const game = roomManager.startGame(socket.id, onRoundStart, debugMode);
@@ -89,7 +150,7 @@ export function registerGameHandlers(
 
     const gameState = game.getState() as PublicGameState;
     io.to(roomCode).emit('game:started', { gameState });
-    emitTurnStart(io, roomCode, game);
+    emitTurnStart(io, roomCode, game, roomManager);
   };
 
   socket.on('game:start', () => handleGameStart(false));
@@ -111,6 +172,9 @@ export function registerGameHandlers(
       socket.emit('room:error', { message: "It's not your turn." });
       return;
     }
+
+    // Clear turn timeout since the player is taking an action
+    clearTurnTimeout(roomCode);
 
     if (action === 'hit') {
       const result = game.hit(socket.id);
@@ -201,7 +265,7 @@ export function registerGameHandlers(
 
     // Send next turn start if game continues
     if (gameState.phase === 'PLAYER_TURN') {
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     }
   });
 
@@ -221,6 +285,9 @@ export function registerGameHandlers(
       socket.emit('room:error', { message: 'No Second Chance pending for you.' });
       return;
     }
+
+    // Clear turn timeout since the player is making a decision
+    clearTurnTimeout(roomCode);
 
     const success = game.useSecondChance(socket.id, use);
 
@@ -247,7 +314,7 @@ export function registerGameHandlers(
 
     // Send next turn start
     if (newGameState.phase === 'PLAYER_TURN') {
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     }
   });
 
@@ -267,6 +334,9 @@ export function registerGameHandlers(
       socket.emit('room:error', { message: 'No freeze target selection pending for you.' });
       return;
     }
+
+    // Clear turn timeout since the player is making a decision
+    clearTurnTimeout(roomCode);
 
     const success = game.selectFreezeTarget(socket.id, targetPlayerId);
 
@@ -290,7 +360,7 @@ export function registerGameHandlers(
 
     // Send next turn start if game continues
     if (newGameState.phase === 'PLAYER_TURN') {
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     }
   });
 
@@ -310,6 +380,9 @@ export function registerGameHandlers(
       socket.emit('room:error', { message: 'No Flip Three target selection pending for you.' });
       return;
     }
+
+    // Clear turn timeout since the player is making a decision
+    clearTurnTimeout(roomCode);
 
     const success = game.selectFlipThreeTarget(socket.id, targetPlayerId);
 
@@ -334,7 +407,7 @@ export function registerGameHandlers(
 
     // Send next turn start if game continues
     if (newGameState.phase === 'PLAYER_TURN') {
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     }
   });
 
@@ -353,7 +426,7 @@ export function registerGameHandlers(
 
       const gameState = game.getState() as PublicGameState;
       io.to(roomCode).emit('game:stateUpdate', { gameState });
-      emitTurnStart(io, roomCode, game);
+      emitTurnStart(io, roomCode, game, roomManager);
     };
 
     const game = roomManager.rematch(socket.id, onRoundStart);
@@ -365,6 +438,6 @@ export function registerGameHandlers(
 
     const gameState = game.getState() as PublicGameState;
     io.to(roomCode).emit('game:started', { gameState });
-    emitTurnStart(io, roomCode, game);
+    emitTurnStart(io, roomCode, game, roomManager);
   });
 }

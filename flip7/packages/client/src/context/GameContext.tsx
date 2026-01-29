@@ -437,8 +437,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }),
       on('game:secondChancePrompt', (data) => dispatch({ type: 'SECOND_CHANCE_PROMPT', payload: data })),
       on('game:secondChanceUsed', () => dispatch({ type: 'CLEAR_SECOND_CHANCE' })),
-      on('game:freezeTargetPrompt', (data) => dispatch({ type: 'FREEZE_TARGET_PROMPT', payload: data })),
-      on('game:flipThreeTargetPrompt', (data) => dispatch({ type: 'FLIP_THREE_TARGET_PROMPT', payload: data })),
+      on('game:freezeTargetPrompt', (data) => {
+        // Only show the modal to the player who drew the action card
+        if (data.playerId === state.playerId) {
+          dispatch({ type: 'FREEZE_TARGET_PROMPT', payload: data });
+        }
+      }),
+      on('game:flipThreeTargetPrompt', (data) => {
+        // Only show the modal to the player who drew the action card
+        if (data.playerId === state.playerId) {
+          dispatch({ type: 'FLIP_THREE_TARGET_PROMPT', payload: data });
+        }
+      }),
       on('game:turnStart', (data) => dispatch({ type: 'TURN_START', payload: data })),
       on('game:playerPassed', (data) => {
         dispatch({ type: 'PLAYER_PASSED', payload: { ...data, playerName: getPlayerName(data.playerId) } });

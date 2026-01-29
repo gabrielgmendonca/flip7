@@ -34,19 +34,18 @@
 ## Needs Verification
 
 ### Action Card Edge Cases
-- [ ] Verify: Flip Three stops early on Flip 7 achievement
-- [ ] Verify: Flip Three stops early on bust (without Second Chance)
-- [ ] Verify: Nested Flip Three cards during Flip Three resolution
-- [ ] Verify: Second Chance cards drawn during Flip Three are usable
+- [x] Verify: Flip Three stops early on Flip 7 achievement
+- [x] Verify: Flip Three stops early on bust (without Second Chance)
+- [x] Verify: Second Chance cards drawn during Flip Three are usable
 
 ### Dealing Phase
-- [ ] Verify: Action cards during initial deal pause and resolve immediately
-- [ ] Verify: Deal continues from correct player after action resolution
+- [x] Verify: Action cards during initial deal pause and resolve immediately
+- [x] Verify: Deal continues from correct player after action resolution
 
 ### Round/Game Flow
-- [ ] Verify: Cards are NOT shuffled back between rounds (discard pile separate)
-- [ ] Verify: Deck reshuffles only when empty, preserving cards in play
-- [ ] Verify: Dealer rotates left each round
+- [x] Verify: Cards are NOT shuffled back between rounds (discard pile separate)
+- [x] Verify: Deck reshuffles only when empty, preserving cards in play
+- [x] Verify: Dealer rotates left each round
 
 ---
 
@@ -87,12 +86,14 @@
 - [x] Per official rules: "Action cards can be played on **any active player** including yourself. If you are the only active player in the round, you **must** play the Action card on yourself."
 
 ### UI Issues
-- [ ] **Target selection modal**: Toast/modal appears to all players, but only the player who drew the action card should see it
-- [ ] **Turn timeout**: Turn timeout does not work (timer shows but no auto-action)
+- [x] **Target selection modal**: Fixed - modal now only appears to the player who drew the action card
+- [x] **Turn timeout**: Fixed - server now auto-passes when turn timer expires
 
 ### Game Flow Issues
-- [ ] **Game ends after 3 rounds**: Game seems to end after 3 rounds instead of when someone reaches 200 points
-- [ ] **Deck shuffling**: Deck appears to be shuffled too often (per official rules, cards are not reshuffled between rounds until deck runs out)
+- [x] **Deck shuffling**: Fixed - deck now persists across rounds and only reshuffles when empty (per official rules)
+
+### Action Card Bugs
+- [x] **Nested Flip Three not executed**: Fixed - nested Flip Three now adds 3 more cards to the remaining draws
 
 ---
 

@@ -188,8 +188,9 @@ export class Game {
 
   private startNewRound(): void {
     this.round++;
-    this.deck.reset();
-    this.discardPile = [];
+    // Per official rules: deck is NOT reshuffled between rounds
+    // Cards from previous round should already be in discard pile
+    // Deck only reshuffles when empty (handled in hit())
     this.pendingSecondChance = undefined;
     this.pendingFreezeTarget = undefined;
     this.pendingFlipThreeTarget = undefined;
@@ -197,8 +198,12 @@ export class Game {
     this.pendingDealIndex = undefined;
     this.flipThreeRemaining = 0;
 
-    // Reset player states for new round
+    // Move all player cards to discard pile and reset player states
     for (const player of this.players) {
+      // Discard all cards from previous round
+      for (const playedCard of player.cards) {
+        this.discardPile.push(playedCard.card);
+      }
       player.cards = [];
       player.roundScore = 0;
       player.status = player.isConnected ? 'active' : 'disconnected';
@@ -522,6 +527,9 @@ export class Game {
           };
           this.phase = 'AWAITING_SECOND_CHANCE';
           return;
+        } else if (result.triggersFlipThree) {
+          // Nested Flip Three - add 3 more cards to draw
+          this.flipThreeRemaining += 3;
         } else if (result.triggersFreeze) {
           // Per official rules: Freeze is SET ASIDE during Flip Three
           // It will be resolved after Flip Three completes (or discarded if busted/Flip7)

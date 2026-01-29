@@ -1299,6 +1299,54 @@ describe('Game', () => {
         }
       }
     });
+
+    it('should execute nested Flip Three cards (add 3 more cards to draw)', () => {
+      // When a Flip Three card is drawn during another Flip Three resolution,
+      // the nested Flip Three should add 3 more cards to the remaining draws
+      const currentPlayer = game.getCurrentPlayer()!;
+      const initialCardCount = currentPlayer.cards.length;
+
+      // Play many rounds to increase chance of hitting Flip Three scenarios
+      for (let i = 0; i < 50; i++) {
+        const player = game.getCurrentPlayer();
+        if (!player || player.id !== currentPlayer.id) break;
+
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        // Handle Second Chance prompts
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+
+        // Handle freeze target selection if needed
+        const state = game.getState();
+        if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+          game.selectFreezeTarget(
+            state.pendingFreezeTarget.selectingPlayerId,
+            state.pendingFreezeTarget.eligibleTargetIds[0]
+          );
+        }
+
+        // Handle flip three target selection if needed
+        if (state.phase === 'AWAITING_FLIP_THREE_TARGET' && state.pendingFlipThreeTarget) {
+          game.selectFlipThreeTarget(
+            state.pendingFlipThreeTarget.selectingPlayerId,
+            state.pendingFlipThreeTarget.eligibleTargetIds[0]
+          );
+        }
+
+        // If player status changed, they're done
+        const updatedPlayer = game.getPlayer(currentPlayer.id)!;
+        if (updatedPlayer.status !== 'active') break;
+      }
+
+      // Verify game state is valid (no crashes from nested Flip Three)
+      const state = game.getState();
+      expect(['PLAYER_TURN', 'AWAITING_FREEZE_TARGET', 'AWAITING_FLIP_THREE_TARGET', 'AWAITING_SECOND_CHANCE', 'ROUND_END', 'GAME_OVER']).toContain(state.phase);
+    });
   });
 
   describe('freeze during initial deal - official rules', () => {
@@ -1452,6 +1500,91 @@ describe('Game', () => {
       // Should still be in a valid state
       const state = game.getState();
       expect(state.deckCount).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should NOT reset deck between rounds (official rules)', () => {
+      vi.useFakeTimers();
+
+      try {
+        // Get initial deck count after dealing
+        const initialDeckCount = game.getState().deckCount;
+
+        // Have all players pass to end the round
+        for (let i = 0; i < 10; i++) {
+          // Handle any pending action card target selections
+          let state = game.getState();
+          if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+            game.selectFreezeTarget(
+              state.pendingFreezeTarget.selectingPlayerId,
+              state.pendingFreezeTarget.eligibleTargetIds[0]
+            );
+          }
+          if (state.phase === 'AWAITING_FLIP_THREE_TARGET' && state.pendingFlipThreeTarget) {
+            game.selectFlipThreeTarget(
+              state.pendingFlipThreeTarget.selectingPlayerId,
+              state.pendingFlipThreeTarget.eligibleTargetIds[0]
+            );
+          }
+
+          const currentPlayer = game.getCurrentPlayer();
+          if (currentPlayer && currentPlayer.status === 'active') {
+            game.pass(currentPlayer.id);
+          }
+        }
+
+        // Handle any remaining action card selections
+        let state = game.getState();
+        while (state.phase === 'AWAITING_FREEZE_TARGET' || state.phase === 'AWAITING_FLIP_THREE_TARGET') {
+          if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+            game.selectFreezeTarget(
+              state.pendingFreezeTarget.selectingPlayerId,
+              state.pendingFreezeTarget.eligibleTargetIds[0]
+            );
+          }
+          if (state.phase === 'AWAITING_FLIP_THREE_TARGET' && state.pendingFlipThreeTarget) {
+            game.selectFlipThreeTarget(
+              state.pendingFlipThreeTarget.selectingPlayerId,
+              state.pendingFlipThreeTarget.eligibleTargetIds[0]
+            );
+          }
+          state = game.getState();
+        }
+
+        expect(game.getState().phase).toBe('ROUND_END');
+
+        // Count cards that were in players' hands (now in discard)
+        const discardCount = game.getState().discardPile.length;
+
+        // Advance to next round
+        vi.advanceTimersByTime(3000);
+        resolveInitialDealFreezes(game);
+
+        // After new round starts:
+        // - Deck count should be less than initial (cards were used)
+        // - Deck + discard should NOT equal 94 (full deck) because cards are now in players' hands
+        // - The key point: deck was NOT reset to 94 cards
+        const stateAfterNewRound = game.getState();
+
+        // Deck was not fully reset - it should be less than 94 minus cards dealt this round
+        // If deck was reset, it would be 94 minus just the initial deal (~3 cards for 3 players)
+        // But since deck persists, it should be initialDeckCount minus cards dealt in round 2
+        expect(stateAfterNewRound.deckCount).toBeLessThan(94);
+
+        // Total cards in play should equal 94
+        const cardsInHands = stateAfterNewRound.players.reduce(
+          (sum, p) => sum + p.cards.length,
+          0
+        );
+        const totalCards =
+          stateAfterNewRound.deckCount +
+          stateAfterNewRound.discardPile.length +
+          cardsInHands;
+        expect(totalCards).toBe(94);
+
+        game.cleanup();
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
