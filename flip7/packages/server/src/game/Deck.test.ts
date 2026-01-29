@@ -43,13 +43,13 @@ describe('Deck', () => {
       }
     });
 
-    it('should have exactly 5 action cards', () => {
+    it('should have exactly 9 action cards', () => {
       const allCards = [];
       while (!deck.isEmpty()) {
         allCards.push(deck.draw()!);
       }
       const actionCards = allCards.filter(isActionCard);
-      expect(actionCards.length).toBe(5);
+      expect(actionCards.length).toBe(9);
     });
 
     it('should have correct distribution of action cards', () => {
@@ -64,18 +64,18 @@ describe('Deck', () => {
         actionCounts.set(card.action, (actionCounts.get(card.action) || 0) + 1);
       }
 
-      expect(actionCounts.get('freeze')).toBe(2);
-      expect(actionCounts.get('flip_three')).toBe(2);
-      expect(actionCounts.get('second_chance')).toBe(1);
+      expect(actionCounts.get('freeze')).toBe(3);
+      expect(actionCounts.get('flip_three')).toBe(3);
+      expect(actionCounts.get('second_chance')).toBe(3);
     });
 
-    it('should have exactly 10 modifier cards', () => {
+    it('should have exactly 6 modifier cards', () => {
       const allCards = [];
       while (!deck.isEmpty()) {
         allCards.push(deck.draw()!);
       }
       const modifierCards = allCards.filter(isModifierCard);
-      expect(modifierCards.length).toBe(10);
+      expect(modifierCards.length).toBe(6);
     });
 
     it('should have correct modifier values', () => {
@@ -86,7 +86,7 @@ describe('Deck', () => {
       const modifierCards = allCards.filter(isModifierCard);
 
       const modifierValues = modifierCards.map((c) => c.modifier).sort();
-      expect(modifierValues).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 'x2'].sort());
+      expect(modifierValues).toEqual([2, 4, 6, 8, 10, 'x2'].sort());
     });
 
     it('should give each card a unique id', () => {
@@ -234,8 +234,8 @@ describe('Deck', () => {
       }
 
       expect(allCards.filter(isNumberCard).length).toBe(79);
-      expect(allCards.filter(isActionCard).length).toBe(5);
-      expect(allCards.filter(isModifierCard).length).toBe(10);
+      expect(allCards.filter(isActionCard).length).toBe(9);
+      expect(allCards.filter(isModifierCard).length).toBe(6);
     });
 
     it('should generate new unique IDs after reset', () => {

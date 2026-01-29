@@ -27,9 +27,9 @@ export class Deck {
       }
     }
 
-    // Action cards (5 total)
-    // Freeze: 2 cards
-    for (let i = 0; i < 2; i++) {
+    // Action cards (9 total per official rules)
+    // Freeze: 3 cards
+    for (let i = 0; i < 3; i++) {
       const card: ActionCard = {
         type: 'action',
         action: 'freeze',
@@ -38,8 +38,8 @@ export class Deck {
       this.cards.push(card);
     }
 
-    // Flip Three: 2 cards
-    for (let i = 0; i < 2; i++) {
+    // Flip Three: 3 cards
+    for (let i = 0; i < 3; i++) {
       const card: ActionCard = {
         type: 'action',
         action: 'flip_three',
@@ -48,17 +48,19 @@ export class Deck {
       this.cards.push(card);
     }
 
-    // Second Chance: 1 card
-    const secondChanceCard: ActionCard = {
-      type: 'action',
-      action: 'second_chance',
-      id: uuidv4(),
-    };
-    this.cards.push(secondChanceCard);
+    // Second Chance: 3 cards
+    for (let i = 0; i < 3; i++) {
+      const card: ActionCard = {
+        type: 'action',
+        action: 'second_chance',
+        id: uuidv4(),
+      };
+      this.cards.push(card);
+    }
 
-    // Modifier cards (10 total)
-    // Per rules: +2 to +10 and X2
-    const modifiers: Array<ModifierCard['modifier']> = [2, 3, 4, 5, 6, 7, 8, 9, 10, 'x2'];
+    // Modifier cards (6 total per official rules)
+    // Only +2, +4, +6, +8, +10, and x2
+    const modifiers: Array<ModifierCard['modifier']> = [2, 4, 6, 8, 10, 'x2'];
     for (const modifier of modifiers) {
       const card: ModifierCard = {
         type: 'modifier',
@@ -68,7 +70,7 @@ export class Deck {
       this.cards.push(card);
     }
 
-    // Total: 79 (numbers) + 5 (actions) + 10 (modifiers) = 94 cards
+    // Total: 79 (numbers) + 9 (actions) + 6 (modifiers) = 94 cards
   }
 
   shuffle(): void {

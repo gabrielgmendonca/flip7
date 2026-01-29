@@ -1,123 +1,172 @@
-# Flip 7 - Game Rules
+# Flip 7 Official Rules (Ruleset Edition 3.1)
 
-Flip 7 is a press-your-luck card game designed by Eric Olsen for 3+ players, ages 8 and up. Games typically last around 20 minutes.
+A game by Eric Olsen | 3+ Players | Ages 8+ | ~20 minutes
 
 ## Objective
 
-Be the first player to score **200 or more points**. If multiple players exceed 200 points in the same round, the player with the highest score wins.
+Be the first player to score **200 points**. You score points based on the total number value of the cards in front of you.
 
-## The Deck (94 Cards)
+- The more valuable a card is, the more copies of that card exist in the deck
+- If you successfully flip 7 unique Number cards, you end the round immediately and score a **15-point bonus**
+- If you draw a duplicate number, you **bust** and score nothing for the round
 
-### Number Cards (79 cards)
+## Contents: 94 Cards
 
-The deck contains number cards from 0 to 12. The quantity of each card matches its value:
+### Number Cards (78 total)
 
-| Card | Quantity | Points |
-|------|----------|--------|
-| 0    | 1        | 0      |
-| 1    | 1        | 1      |
-| 2    | 2        | 2      |
-| 3    | 3        | 3      |
-| 4    | 4        | 4      |
-| 5    | 5        | 5      |
-| 6    | 6        | 6      |
-| 7    | 7        | 7      |
-| 8    | 8        | 8      |
-| 9    | 9        | 9      |
-| 10   | 10       | 10     |
-| 11   | 11       | 11     |
-| 12   | 12       | 12     |
+| Card Value | Quantity |
+|------------|----------|
+| 12 (Twelve) | 12 |
+| 11 (Eleven) | 11 |
+| 10 (Ten) | 10 |
+| 9 (Nine) | 9 |
+| 8 (Eight) | 8 |
+| 7 (Seven) | 7 |
+| 6 (Six) | 6 |
+| 5 (Five) | 5 |
+| 4 (Four) | 4 |
+| 3 (Three) | 3 |
+| 2 (Two) | 2 |
+| 1 (One) | 1 |
+| 0 (Zero) | 1 |
 
-### Action Cards
+> **Note**: The Zero is a Number card worth no points, but it increases your chances of earning the 7-card bonus!
 
-- **Freeze** - Immediately banks your points and ends your turn for the round
-- **Flip Three** - Draw 3 additional cards from the deck (normal rules apply - you can still bust)
-- **Second Chance** - Your safety net! Use it to discard a duplicate number card and continue playing. You can only have one Second Chance card at a time; extras must be given to another player or discarded.
+### Score Modifier Cards (6 total)
 
-### Modifier Cards
+| Card | Quantity |
+|------|----------|
+| +2 | 1 |
+| +4 | 1 |
+| +6 | 1 |
+| +8 | 1 |
+| +10 | 1 |
+| x2 | 1 |
 
-- **+2 to +10** - Adds bonus points to your score at the end of the round
-- **X2** - Doubles the total of all your number cards (applied before adding other modifiers)
+### Action Cards (9 total)
 
-## Setup
+| Card | Quantity |
+|------|----------|
+| Freeze | 3 |
+| Flip Three | 3 |
+| Second Chance | 3 |
 
-1. Shuffle all 94 cards to form a central draw pile
-2. Choose a dealer (this role rotates clockwise after each round)
-3. The dealer deals **one card face-up** to each player, including themselves
-4. If any action cards are dealt during setup, resolve them immediately before continuing
+## How to Play
 
-## Gameplay
+### Setup
 
-Starting with the player to the left of the dealer, each player takes a turn. On your turn, you must choose one of two actions:
+1. Have pen and paper ready to track scores
+2. Shuffle the deck **thoroughly**
+3. Choose a player to be the Dealer for the round
 
-### Hit (Draw a Card)
+### Dealing
 
-Flip the top card of the deck and add it to your tableau:
+The Dealer deals one card face-up to each player in turn order (including themselves).
 
-- **Number Card**: Place it face-up in front of you
-  - If it's a **duplicate** of a number you already have, you **BUST!** (score 0 this round)
-  - If it's your **7th unique number**, you automatically stop and score your cards plus a **15-point bonus**
-- **Action Card**: Resolve its effect immediately
-- **Modifier Card**: Place it in your tableau; it will add to your score if you don't bust
+**Important**: If an Action card comes up during dealing, pause dealing immediately to resolve it. Once resolved, continue dealing until everyone has been dealt a card.
 
-### Pass (Stay)
+> Not everyone will have a Number card at this point. Some players may have a Number or Modifier card, but others may have no cards or even three or four cards depending on what Action cards are dealt.
 
-Stop drawing cards and bank your current points. You're done for the round but keep your score.
+### Player Turns
 
-## Busting
+The Dealer offers each player in turn the option to:
 
-You bust **only** when you draw a duplicate number card. Action cards and Modifier cards **cannot** cause you to bust.
+- **"Hit"** - Get dealt another card
+- **"Stay"** - Exit the round and bank your points
 
-When you bust:
-- You score **0 points** for the round
-- All your cards are discarded
-- Your turn ends
+If you Hit, arrange your Number cards in a single row with Score Modifier cards above them.
 
-## Scoring
+You may "Stay" as long as you have at least one card in front of you.
 
-At the end of a round, players who didn't bust calculate their scores:
+### Busting
 
-1. **Add up all number card values**
-2. **Apply X2 multiplier** (if you have one) - doubles your number card total
-3. **Add modifier bonuses** (+2 to +10)
-4. **Add Flip 7 bonus** (+15 points if you have 7 unique number cards)
+If you draw a Number card with the same value as one already in your line, you **bust** and are out of the round, scoring nothing.
 
-### Example
+## The Action Cards
 
-You have: 3, 7, 10, 12, +5 modifier, X2 modifier
+Action cards can be played on **any active player** including yourself. If you are the only active player in the round, you **must** play the Action card on yourself. Set these cards above your Number cards.
 
-1. Number cards: 3 + 7 + 10 + 12 = 32
-2. Apply X2: 32 × 2 = 64
-3. Add +5 modifier: 64 + 5 = **69 points**
+> **What is an active player?** If you haven't Busted or decided to Stay, you're an active player!
 
-## End of Round
+### Freeze
 
-The round ends when all players have either:
-- Passed (banked their points)
-- Busted (scored 0)
-- Been frozen (by Freeze card)
-- Achieved Flip 7 (7 unique numbers)
+The player receiving this card banks all the points they have collected and is out of the round.
 
-The dealer role passes clockwise, and a new round begins.
+### Flip Three
 
-## End of Game
+The player who receives this card must accept the next three cards, flipping them one at a time.
 
-The game ends when at least one player reaches **200 or more points** at the end of a round. The player with the highest total score wins!
+- All number cards, action cards, and modifier cards count toward the three cards needed
+- Stop early if the player achieves Flip 7 or busts
+- If a Second Chance card is revealed, it may be set aside and used
+- If another Flip Three or Freeze card is revealed, they are resolved **AFTER** all three cards are drawn (but only if the player hasn't busted)
+
+### Second Chance
+
+**Keep this card.** If the player with this card draws another card with the same number as one they already have:
+
+- Discard both the Second Chance card and the duplicate number card
+- The player does NOT bust
+
+**Additional Second Chance rules:**
+
+- A player may only have one Second Chance card at a time
+- If dealt another Second Chance while already having one, give it to another active player
+- If no other active players exist (or all have one), discard the Second Chance card
+- All Second Chance cards are discarded at the end of a round, even if never used
+
+## The Modifier Cards
+
+Modifiers are **not** Number cards and do **not** count toward achieving a Flip 7.
+
+You cannot bust on Modifier cards. You can end your turn with just a Modifier card and no number cards, and you would still score those points (unless it's a x2 card).
+
+### +2 to +10 Cards
+
+Add the amount shown to the sum of your Number cards.
+
+### x2 Card
+
+Double the points for all your Number cards.
+
+## Calculating Scores
+
+1. **Add** the value of all Number cards
+2. **If you have x2**: Multiply that sum by 2
+3. **Add** any +N modifier bonuses
+4. **If you achieved Flip 7**: Add 15 bonus points
+
+### Example Calculations
+
+- Cards: 3, 11, 5, 7, 10 → Score: 36
+- Cards: 3, 11, 5, 7, 10 + x2 → Score: 72
+- Cards: 3, 11, 5, 7, 10 + (+10) → Score: 46
+- Cards: 3, 11, 5, 7, 10, 9, 4 (Flip 7!) → Score: 49 + 15 = 64
+
+## End of a Round
+
+The round continues until one of two end conditions are met:
+
+1. **No active players remain** - All players have either busted or chosen to stay
+2. **Flip 7** - One player flips 7 unique Number cards, ending the round immediately
+
+> To mark yourself as an inactive player, flip your cards over until the round is over.
+
+## Starting the Next Round
+
+1. Set all cards from the round to the side (do NOT shuffle them back into the deck)
+2. Pass the remaining cards in the deck to the left - that player becomes the new Dealer
+3. When the deck runs out, shuffle all the discarded cards to form a new deck
+4. If you need to reshuffle mid-round, leave all cards in front of players where they are (even if that player has busted)
+
+## End of the Game
+
+At the end of the round when at least one player reaches 200 points, the player with the most points wins.
 
 ---
 
-## Quick Reference
+*May the cards flip in your favor!*
 
-| Action | Result |
-|--------|--------|
-| Hit | Draw a card |
-| Pass | Bank your points |
-| Duplicate number | BUST (0 points) |
-| 7 unique numbers | Auto-pass + 15 bonus |
-| Freeze card | Auto-pass immediately |
-| Flip Three | Draw 3 more cards |
-| Second Chance | Discard duplicate to continue |
+> **Party of two or less?** Try challenging yourself: can you score 200 points in under 5 rounds?!
 
----
-
-*Based on the official Flip 7 rules by Eric Olsen, published by The Op.*
+> **Playing with more than 18 people?** We recommend playing with a second deck.
