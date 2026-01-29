@@ -12,16 +12,11 @@
 
 ~~**Expected behavior**: In Flip 7, each player can only draw one card per turn, then passes to the next player.~~
 
-## 3. Deck composition (Needs Verification)
+## 3. ~~Deck composition~~ (VERIFIED - Not a bug)
 
-The number 4 appeared suspiciously frequent in testing.
+~~The number 4 appeared suspiciously frequent in testing.~~
 
-**Expected composition**: The card number equals the quantity in the deck:
-- 12 copies of card "12"
-- 11 copies of card "11"
-- 10 copies of card "10"
-- ...and so on
-- Exception: 1 copy of card "0"
+The deck composition is correct: card quantity equals card value (4 copies of "4", 12 copies of "12", etc.). This is the expected Flip 7 distribution. Verified by tests in `Deck.test.ts`.
 
 ## 4. ~~Bust card not shown~~ (FIXED)
 
