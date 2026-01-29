@@ -443,7 +443,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   const startGame = () => {
-    console.log('startGame called, isConnected:', isConnected);
     emit('game:start');
   };
 

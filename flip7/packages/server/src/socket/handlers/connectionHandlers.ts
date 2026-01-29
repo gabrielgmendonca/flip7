@@ -56,8 +56,7 @@ export function registerConnectionHandlers(
     socket.to(room.code).emit('connection:playerReconnected', { playerId: socket.id });
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log(`Client disconnected: ${socket.id}, reason: ${reason}`);
+  socket.on('disconnect', () => {
     const roomCode = socket.data.roomCode;
 
     if (roomCode) {
