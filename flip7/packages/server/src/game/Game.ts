@@ -48,6 +48,10 @@ export class Game {
     playerId: string;
     eligibleTargets: string[];
   };
+  private pendingFlipThreeFreeze?: {
+    playerId: string;
+  };
+  private pendingDealIndex?: number; // Track where we are in initial deal when paused for freeze
   private flipThreeRemaining: number = 0;
   private winnerId?: string;
   private roundStartTimeout?: ReturnType<typeof setTimeout>;
@@ -75,8 +79,8 @@ export class Game {
     }));
   }
 
-  startGame(): void {
-    if (this.players.length < 3) {
+  startGame(debugMode: boolean = false): void {
+    if (!debugMode && this.players.length < 3) {
       throw new Error('Need at least 3 players to start');
     }
 
@@ -90,6 +94,8 @@ export class Game {
     this.discardPile = [];
     this.pendingSecondChance = undefined;
     this.pendingFreezeTarget = undefined;
+    this.pendingFlipThreeFreeze = undefined;
+    this.pendingDealIndex = undefined;
     this.flipThreeRemaining = 0;
 
     // Reset player states for new round
@@ -102,11 +108,34 @@ export class Game {
     // Deal one card to each player
     // Per rules: if action cards come up during initial deal, resolve them immediately
     this.phase = 'DEALING';
-    for (const player of this.players) {
+    this.continueInitialDeal(0);
+  }
+
+  /**
+   * Continue the initial deal from a given player index.
+   * Can be paused for freeze target selection and resumed later.
+   */
+  private continueInitialDeal(startIndex: number): void {
+    for (let i = startIndex; i < this.players.length; i++) {
+      const player = this.players[i];
       if (player.status === 'active') {
-        this.dealInitialCard(player);
+        const pausedForFreeze = this.dealInitialCard(player, i);
+        if (pausedForFreeze) {
+          // Freeze target selection needed - pause deal and wait
+          return;
+        }
       }
     }
+
+    // Deal complete - start the game
+    this.finishInitialDeal();
+  }
+
+  /**
+   * Finish the initial deal and start player turns.
+   */
+  private finishInitialDeal(): void {
+    this.pendingDealIndex = undefined;
 
     // Start with player after dealer
     this.currentPlayerIndex = (this.dealerIndex + 1) % this.players.length;
@@ -117,7 +146,11 @@ export class Game {
     this.onRoundStart?.();
   }
 
-  private dealInitialCard(player: Player): void {
+  /**
+   * Deal initial card(s) to a player.
+   * Returns true if we need to pause for freeze target selection.
+   */
+  private dealInitialCard(player: Player, playerIndex: number): boolean {
     // Keep dealing until player has a non-action card (or gets frozen/busted)
     // Per rules: action cards during initial deal are resolved immediately
     let needsCard = true;
@@ -130,13 +163,37 @@ export class Game {
       }
 
       if (result.triggersFreeze) {
-        // Freeze during deal: player is frozen immediately
-        player.status = 'frozen';
-        player.roundScore = this.calculatePlayerRoundScore(player);
+        // Per official rules: player who drew freeze chooses target during initial deal
+        const eligibleTargets = this.players
+          .filter((p) => p.status === 'active' && p.isConnected)
+          .map((p) => p.id);
+
+        if (eligibleTargets.length === 1) {
+          // Only one eligible target, freeze immediately
+          const target = this.getPlayer(eligibleTargets[0]);
+          if (target) {
+            target.status = 'frozen';
+            target.roundScore = this.calculatePlayerRoundScore(target);
+          }
+          needsCard = false;
+        } else if (eligibleTargets.length > 1) {
+          // Multiple targets - pause deal for selection
+          this.pendingFreezeTarget = {
+            playerId: player.id,
+            eligibleTargets,
+          };
+          // Store where we are in the deal (continue from NEXT player after selection)
+          this.pendingDealIndex = playerIndex + 1;
+          this.phase = 'AWAITING_FREEZE_TARGET';
+          return true; // Pause the deal
+        }
         needsCard = false;
       } else if (result.triggersFlipThree) {
         // Flip Three during deal: draw 3 more cards
-        this.executeFlipThreeDuringDeal(player);
+        const pausedForFreeze = this.executeFlipThreeDuringDeal(player, playerIndex);
+        if (pausedForFreeze) {
+          return true; // Pause the deal
+        }
         needsCard = false; // Flip Three counts as receiving cards
       } else if (result.extraSecondChance) {
         // Extra Second Chance - give to another active player or discard
@@ -150,9 +207,16 @@ export class Game {
         needsCard = false;
       }
     }
+    return false; // No pause needed
   }
 
-  private executeFlipThreeDuringDeal(player: Player): void {
+  /**
+   * Execute Flip Three during initial deal.
+   * Returns true if we need to pause for freeze target selection.
+   */
+  private executeFlipThreeDuringDeal(player: Player, playerIndex: number): boolean {
+    let freezeDrawn = false;
+
     for (let i = 0; i < 3 && player.status === 'active'; i++) {
       const result = this.dealCardToPlayer(player);
       if (!result) break;
@@ -172,13 +236,46 @@ export class Game {
           this.discardPile.push(result.card);
         }
       } else if (result.triggersFreeze) {
-        player.status = 'frozen';
-        player.roundScore = this.calculatePlayerRoundScore(player);
-        break;
+        // Per official rules: Freeze is SET ASIDE during Flip Three
+        freezeDrawn = true;
+        // Continue Flip Three - don't interrupt
       } else if (result.extraSecondChance) {
         this.giveSecondChanceToOtherPlayer(result.extraSecondChance);
       }
     }
+
+    // Handle freeze after Flip Three completes during initial deal
+    if (freezeDrawn) {
+      if (player.status === 'busted') {
+        // Per official rules: if player busted, Freeze is DISCARDED
+        return false;
+      } else if (player.status === 'active') {
+        // Player didn't bust - resolve the freeze
+        const eligibleTargets = this.players
+          .filter((p) => p.status === 'active' && p.isConnected)
+          .map((p) => p.id);
+
+        if (eligibleTargets.length === 1) {
+          // Only one eligible target, freeze immediately
+          const target = this.getPlayer(eligibleTargets[0]);
+          if (target) {
+            target.status = 'frozen';
+            target.roundScore = this.calculatePlayerRoundScore(target);
+          }
+        } else if (eligibleTargets.length > 1) {
+          // Multiple targets - pause deal for selection
+          this.pendingFreezeTarget = {
+            playerId: player.id,
+            eligibleTargets,
+          };
+          this.pendingDealIndex = playerIndex + 1;
+          this.phase = 'AWAITING_FREEZE_TARGET';
+          return true; // Pause the deal
+        }
+      }
+    }
+
+    return false;
   }
 
   private giveSecondChanceToOtherPlayer(card: Card): void {
@@ -390,28 +487,10 @@ export class Game {
           this.phase = 'AWAITING_SECOND_CHANCE';
           return;
         } else if (result.triggersFreeze) {
-          // Get all active players as eligible freeze targets
-          const eligibleTargets = this.players
-            .filter((p) => p.status === 'active' && p.isConnected)
-            .map((p) => p.id);
-
-          if (eligibleTargets.length === 1) {
-            // Only one eligible target (must be self), freeze immediately
-            const target = this.getPlayer(eligibleTargets[0]);
-            if (target) {
-              target.status = 'frozen';
-              target.roundScore = this.calculatePlayerRoundScore(target);
-            }
-          } else {
-            // Multiple targets available, wait for selection
-            this.pendingFreezeTarget = {
-              playerId: player.id,
-              eligibleTargets,
-            };
-            this.phase = 'AWAITING_FREEZE_TARGET';
-            return;
-          }
-          break;
+          // Per official rules: Freeze is SET ASIDE during Flip Three
+          // It will be resolved after Flip Three completes (or discarded if busted/Flip7)
+          this.pendingFlipThreeFreeze = { playerId: player.id };
+          // Continue Flip Three - don't interrupt
         }
 
         // Check if got 7 unique numbers (processDrawnCard sets status to 'passed')
@@ -423,6 +502,41 @@ export class Game {
     }
 
     this.flipThreeRemaining = 0;
+
+    // Handle pending Flip Three freeze after Flip Three completes
+    if (this.pendingFlipThreeFreeze && this.pendingFlipThreeFreeze.playerId === player.id) {
+      if (player.status === 'busted' || player.status === 'passed') {
+        // Per official rules: if player busted or achieved Flip 7, Freeze is DISCARDED
+        this.pendingFlipThreeFreeze = undefined;
+      } else if (player.status === 'active') {
+        // Player didn't bust and didn't achieve Flip 7 - resolve the freeze
+        const eligibleTargets = this.players
+          .filter((p) => p.status === 'active' && p.isConnected)
+          .map((p) => p.id);
+
+        if (eligibleTargets.length === 1) {
+          // Only one eligible target, freeze immediately
+          const target = this.getPlayer(eligibleTargets[0]);
+          if (target) {
+            target.status = 'frozen';
+            target.roundScore = this.calculatePlayerRoundScore(target);
+          }
+          this.pendingFlipThreeFreeze = undefined;
+        } else if (eligibleTargets.length > 1) {
+          // Multiple targets available, wait for selection
+          this.pendingFreezeTarget = {
+            playerId: player.id,
+            eligibleTargets,
+          };
+          this.pendingFlipThreeFreeze = undefined;
+          this.phase = 'AWAITING_FREEZE_TARGET';
+          return;
+        } else {
+          // No eligible targets
+          this.pendingFlipThreeFreeze = undefined;
+        }
+      }
+    }
 
     if (player.status === 'busted' || player.status === 'frozen' || player.status === 'passed') {
       this.advanceToNextPlayer();
@@ -523,6 +637,15 @@ export class Game {
 
     // Clear pending state
     this.pendingFreezeTarget = undefined;
+
+    // Check if we're in the middle of initial deal
+    if (this.pendingDealIndex !== undefined) {
+      // Continue the initial deal from where we left off
+      this.phase = 'DEALING';
+      this.continueInitialDeal(this.pendingDealIndex);
+      return true;
+    }
+
     this.phase = 'PLAYER_TURN';
 
     // If we were in the middle of flip three, continue it
