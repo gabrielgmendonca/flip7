@@ -9,7 +9,7 @@ import {
   isNumberCard,
   isActionCard,
   isModifierCard,
-  ModifierCard,
+  calculateRoundScore,
 } from '@flip7/shared';
 import { Deck } from './Deck';
 import { v4 as uuidv4 } from 'uuid';
@@ -78,6 +78,68 @@ export class Game {
       reconnectToken: gp.reconnectToken,
     }));
   }
+
+  // ========== Helper Methods ==========
+
+  /**
+   * Get all players eligible to be frozen (active and connected).
+   */
+  private getEligibleFreezeTargets(): string[] {
+    return this.players
+      .filter((p) => p.status === 'active' && p.isConnected)
+      .map((p) => p.id);
+  }
+
+  /**
+   * Check if player has a Second Chance card.
+   */
+  private hasSecondChanceCard(player: Player): boolean {
+    return player.cards.some(
+      (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
+    );
+  }
+
+  /**
+   * Get index of player's Second Chance card, or -1 if not found.
+   */
+  private getSecondChanceIndex(player: Player): number {
+    return player.cards.findIndex(
+      (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
+    );
+  }
+
+  /**
+   * Attempt to resolve freeze by selecting a target.
+   * If only one eligible target, freezes immediately and returns true.
+   * If multiple targets, sets up pending freeze state and returns false.
+   * Returns null if no eligible targets.
+   */
+  private tryResolveFreeze(playerId: string): 'resolved' | 'pending' | 'none' {
+    const eligibleTargets = this.getEligibleFreezeTargets();
+
+    if (eligibleTargets.length === 0) {
+      return 'none';
+    }
+
+    if (eligibleTargets.length === 1) {
+      const target = this.getPlayer(eligibleTargets[0]);
+      if (target) {
+        target.status = 'frozen';
+        target.roundScore = calculateRoundScore(target.cards);
+      }
+      return 'resolved';
+    }
+
+    // Multiple targets - wait for selection
+    this.pendingFreezeTarget = {
+      playerId,
+      eligibleTargets,
+    };
+    this.phase = 'AWAITING_FREEZE_TARGET';
+    return 'pending';
+  }
+
+  // ========== Game Flow ==========
 
   startGame(debugMode: boolean = false): void {
     if (!debugMode && this.players.length < 3) {
@@ -164,27 +226,10 @@ export class Game {
 
       if (result.triggersFreeze) {
         // Per official rules: player who drew freeze chooses target during initial deal
-        const eligibleTargets = this.players
-          .filter((p) => p.status === 'active' && p.isConnected)
-          .map((p) => p.id);
-
-        if (eligibleTargets.length === 1) {
-          // Only one eligible target, freeze immediately
-          const target = this.getPlayer(eligibleTargets[0]);
-          if (target) {
-            target.status = 'frozen';
-            target.roundScore = this.calculatePlayerRoundScore(target);
-          }
-          needsCard = false;
-        } else if (eligibleTargets.length > 1) {
-          // Multiple targets - pause deal for selection
-          this.pendingFreezeTarget = {
-            playerId: player.id,
-            eligibleTargets,
-          };
+        const freezeResult = this.tryResolveFreeze(player.id);
+        if (freezeResult === 'pending') {
           // Store where we are in the deal (continue from NEXT player after selection)
           this.pendingDealIndex = playerIndex + 1;
-          this.phase = 'AWAITING_FREEZE_TARGET';
           return true; // Pause the deal
         }
         needsCard = false;
@@ -201,7 +246,6 @@ export class Game {
         // Continue dealing - player still needs a starting card
       } else if (isActionCard(result.card) && result.card.action === 'second_chance') {
         // Got a Second Chance, keep dealing for a starting card
-        // (player now has Second Chance but needs another card)
       } else {
         // Number or modifier card - done dealing
         needsCard = false;
@@ -227,9 +271,7 @@ export class Game {
         break;
       } else if (result.isBust && result.hasSecondChance) {
         // During deal, auto-use Second Chance
-        const secondChanceIndex = player.cards.findIndex(
-          (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
-        );
+        const secondChanceIndex = this.getSecondChanceIndex(player);
         if (secondChanceIndex !== -1) {
           const [secondChancePlayedCard] = player.cards.splice(secondChanceIndex, 1);
           this.discardPile.push(secondChancePlayedCard.card);
@@ -251,25 +293,9 @@ export class Game {
         return false;
       } else if (player.status === 'active') {
         // Player didn't bust - resolve the freeze
-        const eligibleTargets = this.players
-          .filter((p) => p.status === 'active' && p.isConnected)
-          .map((p) => p.id);
-
-        if (eligibleTargets.length === 1) {
-          // Only one eligible target, freeze immediately
-          const target = this.getPlayer(eligibleTargets[0]);
-          if (target) {
-            target.status = 'frozen';
-            target.roundScore = this.calculatePlayerRoundScore(target);
-          }
-        } else if (eligibleTargets.length > 1) {
-          // Multiple targets - pause deal for selection
-          this.pendingFreezeTarget = {
-            playerId: player.id,
-            eligibleTargets,
-          };
+        const freezeResult = this.tryResolveFreeze(player.id);
+        if (freezeResult === 'pending') {
           this.pendingDealIndex = playerIndex + 1;
-          this.phase = 'AWAITING_FREEZE_TARGET';
           return true; // Pause the deal
         }
       }
@@ -281,9 +307,7 @@ export class Game {
   private giveSecondChanceToOtherPlayer(card: Card): void {
     // Find an active player who doesn't have a Second Chance
     const eligiblePlayer = this.players.find(
-      (p) =>
-        p.status === 'active' &&
-        !p.cards.some((pc) => isActionCard(pc.card) && pc.card.action === 'second_chance')
+      (p) => p.status === 'active' && !this.hasSecondChanceCard(p)
     );
 
     if (eligiblePlayer) {
@@ -321,15 +345,7 @@ export class Game {
       if (hasDuplicate) {
         result.isBust = true;
         result.duplicateCard = card;
-
-        // Check if player has Second Chance card
-        const secondChanceIndex = player.cards.findIndex(
-          (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
-        );
-
-        if (secondChanceIndex !== -1) {
-          result.hasSecondChance = true;
-        }
+        result.hasSecondChance = this.hasSecondChanceCard(player);
       } else {
         // Per rules: modifiers don't attach to specific cards, they're standalone score bonuses
         player.cards.push(result.playedCard);
@@ -358,10 +374,7 @@ export class Game {
           break;
         case 'second_chance':
           // Per rules: player can only have one Second Chance card
-          const hasSecondChance = player.cards.some(
-            (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
-          );
-          if (hasSecondChance) {
+          if (this.hasSecondChanceCard(player)) {
             // Extra Second Chance - must be given to another player or discarded
             result.extraSecondChance = card;
           } else {
@@ -426,26 +439,9 @@ export class Game {
         this.advanceToNextPlayer();
       }
     } else if (result.triggersFreeze) {
-      // Get all active players as eligible freeze targets
-      const eligibleTargets = this.players
-        .filter((p) => p.status === 'active' && p.isConnected)
-        .map((p) => p.id);
-
-      if (eligibleTargets.length === 1) {
-        // Only one eligible target (must be self), freeze immediately
-        const target = this.getPlayer(eligibleTargets[0]);
-        if (target) {
-          target.status = 'frozen';
-          target.roundScore = this.calculatePlayerRoundScore(target);
-        }
+      const freezeResult = this.tryResolveFreeze(player.id);
+      if (freezeResult !== 'pending') {
         this.advanceToNextPlayer();
-      } else {
-        // Multiple targets available, wait for selection
-        this.pendingFreezeTarget = {
-          playerId: player.id,
-          eligibleTargets,
-        };
-        this.phase = 'AWAITING_FREEZE_TARGET';
       }
     } else if (result.triggersFlipThree) {
       this.flipThreeRemaining = 3;
@@ -453,7 +449,7 @@ export class Game {
       this.executeFlipThree(player);
     } else if (player.status === 'passed') {
       // Got 7 unique numbers
-      player.roundScore = this.calculatePlayerRoundScore(player);
+      player.roundScore = calculateRoundScore(player.cards);
       this.advanceToNextPlayer();
     } else {
       // Normal successful draw - advance to next player (Flip 7 rules: one card per turn)
@@ -495,7 +491,7 @@ export class Game {
 
         // Check if got 7 unique numbers (processDrawnCard sets status to 'passed')
         if ((player.status as string) === 'passed') {
-          player.roundScore = this.calculatePlayerRoundScore(player);
+          player.roundScore = calculateRoundScore(player.cards);
           break;
         }
       }
@@ -510,30 +506,10 @@ export class Game {
         this.pendingFlipThreeFreeze = undefined;
       } else if (player.status === 'active') {
         // Player didn't bust and didn't achieve Flip 7 - resolve the freeze
-        const eligibleTargets = this.players
-          .filter((p) => p.status === 'active' && p.isConnected)
-          .map((p) => p.id);
-
-        if (eligibleTargets.length === 1) {
-          // Only one eligible target, freeze immediately
-          const target = this.getPlayer(eligibleTargets[0]);
-          if (target) {
-            target.status = 'frozen';
-            target.roundScore = this.calculatePlayerRoundScore(target);
-          }
-          this.pendingFlipThreeFreeze = undefined;
-        } else if (eligibleTargets.length > 1) {
-          // Multiple targets available, wait for selection
-          this.pendingFreezeTarget = {
-            playerId: player.id,
-            eligibleTargets,
-          };
-          this.pendingFlipThreeFreeze = undefined;
-          this.phase = 'AWAITING_FREEZE_TARGET';
+        this.pendingFlipThreeFreeze = undefined;
+        const freezeResult = this.tryResolveFreeze(player.id);
+        if (freezeResult === 'pending') {
           return;
-        } else {
-          // No eligible targets
-          this.pendingFlipThreeFreeze = undefined;
         }
       }
     }
@@ -561,10 +537,7 @@ export class Game {
 
     if (use) {
       // Use Second Chance: discard the duplicate and the Second Chance card
-      const secondChanceIndex = player.cards.findIndex(
-        (pc) => isActionCard(pc.card) && pc.card.action === 'second_chance'
-      );
-
+      const secondChanceIndex = this.getSecondChanceIndex(player);
       if (secondChanceIndex !== -1) {
         const [secondChancePlayedCard] = player.cards.splice(secondChanceIndex, 1);
         this.discardPile.push(secondChancePlayedCard.card);
@@ -607,7 +580,7 @@ export class Game {
     }
 
     player.status = 'passed';
-    player.roundScore = this.calculatePlayerRoundScore(player);
+    player.roundScore = calculateRoundScore(player.cards);
     this.advanceToNextPlayer();
 
     return true;
@@ -633,7 +606,7 @@ export class Game {
 
     // Freeze the target player
     target.status = 'frozen';
-    target.roundScore = this.calculatePlayerRoundScore(target);
+    target.roundScore = calculateRoundScore(target.cards);
 
     // Clear pending state
     this.pendingFreezeTarget = undefined;
@@ -662,45 +635,6 @@ export class Game {
     }
 
     return true;
-  }
-
-  private calculatePlayerRoundScore(player: Player): number {
-    // Per official rules:
-    // 1. Sum all number card values
-    // 2. If X2 present, double that sum
-    // 3. Add all +modifier values
-    // 4. Add Flip 7 bonus if applicable
-
-    let numberTotal = 0;
-    const numberCardValues = new Set<number>();
-    let hasX2 = false;
-    let modifierBonus = 0;
-
-    for (const playedCard of player.cards) {
-      if (isNumberCard(playedCard.card)) {
-        numberCardValues.add(playedCard.card.value);
-        numberTotal += playedCard.card.value;
-      } else if (isModifierCard(playedCard.card)) {
-        if (playedCard.card.modifier === 'x2') {
-          hasX2 = true;
-        } else {
-          modifierBonus += playedCard.card.modifier;
-        }
-      }
-    }
-
-    // Apply X2 to number card total first
-    let total = hasX2 ? numberTotal * 2 : numberTotal;
-
-    // Then add modifier bonuses
-    total += modifierBonus;
-
-    // 7 unique numbers bonus
-    if (numberCardValues.size >= 7) {
-      total += 15;
-    }
-
-    return total;
   }
 
   private advanceToNextPlayer(): void {

@@ -26,6 +26,7 @@ export type Card = NumberCard | ActionCard | ModifierCard;
 
 export interface PlayedCard {
   card: Card;
+  /** Reserved for potential future use - modifiers are currently handled in scoring, not attached to cards */
   attachedModifiers: ModifierCard[];
 }
 

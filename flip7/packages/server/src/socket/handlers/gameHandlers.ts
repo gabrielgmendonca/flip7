@@ -8,16 +8,58 @@ import {
   PublicGameState,
 } from '@flip7/shared';
 
+import { Game } from '../../game/Game';
+
 type TypedSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type TypedServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+/**
+ * Emit turn start event to all clients in the room.
+ */
+function emitTurnStart(io: TypedServer, roomCode: string, game: Game): void {
+  const currentPlayer = game.getCurrentPlayer();
+  if (currentPlayer) {
+    const gameState = game.getState() as PublicGameState;
+    io.to(roomCode).emit('game:turnStart', {
+      playerId: currentPlayer.id,
+      timeoutSeconds: gameState.settings.turnTimeoutSeconds,
+    });
+  }
+}
+
+/**
+ * Broadcast round end and game end events if applicable.
+ */
+function broadcastRoundAndGameEnd(io: TypedServer, roomCode: string, gameState: PublicGameState): void {
+  if (gameState.phase === 'ROUND_END') {
+    io.to(roomCode).emit('game:roundEnd', {
+      round: gameState.round,
+      scores: gameState.players.map((p) => ({
+        playerId: p.id,
+        roundScore: p.roundScore,
+        totalScore: p.score,
+      })),
+    });
+  }
+
+  if (gameState.phase === 'GAME_END' && gameState.winnerId) {
+    io.to(roomCode).emit('game:ended', {
+      winnerId: gameState.winnerId,
+      finalScores: gameState.players.map((p) => ({
+        playerId: p.id,
+        score: p.score,
+      })),
+    });
+  }
+}
 
 export function registerGameHandlers(
   io: TypedServer,
   socket: TypedSocket,
   roomManager: RoomManager
 ): void {
-  socket.on('game:start', () => {
-    console.log('game:start received from', socket.id);
+  const handleGameStart = (debugMode: boolean) => {
+    console.log('game:start received from', socket.id, 'debugMode:', debugMode);
     console.log('socket.data:', socket.data);
 
     const roomCode = socket.data.roomCode;
@@ -32,18 +74,10 @@ export function registerGameHandlers(
 
       const gameState = game.getState() as PublicGameState;
       io.to(roomCode).emit('game:stateUpdate', { gameState });
-
-      // Send turn start to current player
-      const currentPlayer = game.getCurrentPlayer();
-      if (currentPlayer) {
-        io.to(roomCode).emit('game:turnStart', {
-          playerId: currentPlayer.id,
-          timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-        });
-      }
+      emitTurnStart(io, roomCode, game);
     };
 
-    const game = roomManager.startGame(socket.id, onRoundStart);
+    const game = roomManager.startGame(socket.id, onRoundStart, debugMode);
 
     if (!game) {
       console.log('startGame returned null');
@@ -55,16 +89,11 @@ export function registerGameHandlers(
 
     const gameState = game.getState() as PublicGameState;
     io.to(roomCode).emit('game:started', { gameState });
+    emitTurnStart(io, roomCode, game);
+  };
 
-    // Send turn start to current player
-    const currentPlayer = game.getCurrentPlayer();
-    if (currentPlayer) {
-      io.to(roomCode).emit('game:turnStart', {
-        playerId: currentPlayer.id,
-        timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-      });
-    }
-  });
+  socket.on('game:start', () => handleGameStart(false));
+  socket.on('game:startDebug', () => handleGameStart(true));
 
   socket.on('game:action', ({ action }) => {
     const roomCode = socket.data.roomCode;
@@ -157,36 +186,11 @@ export function registerGameHandlers(
     io.to(roomCode).emit('game:stateUpdate', { gameState });
 
     // Check for round end or game end
-    if (gameState.phase === 'ROUND_END') {
-      io.to(roomCode).emit('game:roundEnd', {
-        round: gameState.round,
-        scores: gameState.players.map((p) => ({
-          playerId: p.id,
-          roundScore: p.roundScore,
-          totalScore: p.score,
-        })),
-      });
-    }
-
-    if (gameState.phase === 'GAME_END' && gameState.winnerId) {
-      io.to(roomCode).emit('game:ended', {
-        winnerId: gameState.winnerId,
-        finalScores: gameState.players.map((p) => ({
-          playerId: p.id,
-          score: p.score,
-        })),
-      });
-    }
+    broadcastRoundAndGameEnd(io, roomCode, gameState);
 
     // Send next turn start if game continues
     if (gameState.phase === 'PLAYER_TURN') {
-      const nextPlayer = game.getCurrentPlayer();
-      if (nextPlayer) {
-        io.to(roomCode).emit('game:turnStart', {
-          playerId: nextPlayer.id,
-          timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-        });
-      }
+      emitTurnStart(io, roomCode, game);
     }
   });
 
@@ -232,13 +236,7 @@ export function registerGameHandlers(
 
     // Send next turn start
     if (newGameState.phase === 'PLAYER_TURN') {
-      const nextPlayer = game.getCurrentPlayer();
-      if (nextPlayer) {
-        io.to(roomCode).emit('game:turnStart', {
-          playerId: nextPlayer.id,
-          timeoutSeconds: newGameState.settings.turnTimeoutSeconds,
-        });
-      }
+      emitTurnStart(io, roomCode, game);
     }
   });
 
@@ -277,36 +275,11 @@ export function registerGameHandlers(
     io.to(roomCode).emit('game:stateUpdate', { gameState: newGameState });
 
     // Check for round end or game end
-    if (newGameState.phase === 'ROUND_END') {
-      io.to(roomCode).emit('game:roundEnd', {
-        round: newGameState.round,
-        scores: newGameState.players.map((p) => ({
-          playerId: p.id,
-          roundScore: p.roundScore,
-          totalScore: p.score,
-        })),
-      });
-    }
-
-    if (newGameState.phase === 'GAME_END' && newGameState.winnerId) {
-      io.to(roomCode).emit('game:ended', {
-        winnerId: newGameState.winnerId,
-        finalScores: newGameState.players.map((p) => ({
-          playerId: p.id,
-          score: p.score,
-        })),
-      });
-    }
+    broadcastRoundAndGameEnd(io, roomCode, newGameState);
 
     // Send next turn start if game continues
     if (newGameState.phase === 'PLAYER_TURN') {
-      const nextPlayer = game.getCurrentPlayer();
-      if (nextPlayer) {
-        io.to(roomCode).emit('game:turnStart', {
-          playerId: nextPlayer.id,
-          timeoutSeconds: newGameState.settings.turnTimeoutSeconds,
-        });
-      }
+      emitTurnStart(io, roomCode, game);
     }
   });
 
@@ -325,15 +298,7 @@ export function registerGameHandlers(
 
       const gameState = game.getState() as PublicGameState;
       io.to(roomCode).emit('game:stateUpdate', { gameState });
-
-      // Send turn start to current player
-      const currentPlayer = game.getCurrentPlayer();
-      if (currentPlayer) {
-        io.to(roomCode).emit('game:turnStart', {
-          playerId: currentPlayer.id,
-          timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-        });
-      }
+      emitTurnStart(io, roomCode, game);
     };
 
     const game = roomManager.rematch(socket.id, onRoundStart);
@@ -345,14 +310,6 @@ export function registerGameHandlers(
 
     const gameState = game.getState() as PublicGameState;
     io.to(roomCode).emit('game:started', { gameState });
-
-    // Send turn start to current player
-    const currentPlayer = game.getCurrentPlayer();
-    if (currentPlayer) {
-      io.to(roomCode).emit('game:turnStart', {
-        playerId: currentPlayer.id,
-        timeoutSeconds: gameState.settings.turnTimeoutSeconds,
-      });
-    }
+    emitTurnStart(io, roomCode, game);
   });
 }

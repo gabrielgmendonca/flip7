@@ -7,6 +7,14 @@ export class RoomManager {
   private playerToRoom: Map<string, string> = new Map();
   private games: Map<string, Game> = new Map();
   private reconnectTokens: Map<string, { playerId: string; roomCode: string }> = new Map();
+  private playerToToken: Map<string, string> = new Map();
+
+  /**
+   * Get reconnect token for a player (O(1) lookup).
+   */
+  private getReconnectTokenForPlayer(playerId: string): string | undefined {
+    return this.playerToToken.get(playerId);
+  }
 
   private generateRoomCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -46,6 +54,7 @@ export class RoomManager {
     this.rooms.set(code, room);
     this.playerToRoom.set(playerId, code);
     this.reconnectTokens.set(reconnectToken, { playerId, roomCode: code });
+    this.playerToToken.set(playerId, reconnectToken);
 
     return { room: this.toPublicRoom(room), reconnectToken };
   }
@@ -81,6 +90,7 @@ export class RoomManager {
     room.players.push(player);
     this.playerToRoom.set(playerId, room.code);
     this.reconnectTokens.set(reconnectToken, { playerId, roomCode: room.code });
+    this.playerToToken.set(playerId, reconnectToken);
 
     return { room: this.toPublicRoom(room), reconnectToken };
   }
@@ -101,11 +111,10 @@ export class RoomManager {
     this.playerToRoom.delete(playerId);
 
     // Remove reconnect token for this player
-    for (const [token, data] of this.reconnectTokens.entries()) {
-      if (data.playerId === playerId) {
-        this.reconnectTokens.delete(token);
-        break;
-      }
+    const token = this.getReconnectTokenForPlayer(playerId);
+    if (token) {
+      this.reconnectTokens.delete(token);
+      this.playerToToken.delete(playerId);
     }
 
     if (room.players.length === 0) {
@@ -175,8 +184,8 @@ export class RoomManager {
     return room.settings;
   }
 
-  startGame(hostId: string, onRoundStart?: () => void): Game | null {
-    console.log('startGame called with hostId:', hostId);
+  startGame(hostId: string, onRoundStart?: () => void, debugMode: boolean = false): Game | null {
+    console.log('startGame called with hostId:', hostId, 'debugMode:', debugMode);
     const roomCode = this.playerToRoom.get(hostId);
     console.log('roomCode from playerToRoom:', roomCode);
     if (!roomCode) {
@@ -191,29 +200,19 @@ export class RoomManager {
       return null;
     }
 
-    if (room.players.length < 3) {
+    if (!debugMode && room.players.length < 3) {
       console.log('Not enough players:', room.players.length);
       return null;
     }
 
-    const gamePlayers: GamePlayer[] = room.players.map((p) => {
-      // Find reconnect token for this player
-      let token = '';
-      for (const [t, data] of this.reconnectTokens.entries()) {
-        if (data.playerId === p.id) {
-          token = t;
-          break;
-        }
-      }
-      return {
-        id: p.id,
-        name: p.name,
-        reconnectToken: token,
-      };
-    });
+    const gamePlayers: GamePlayer[] = room.players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      reconnectToken: this.getReconnectTokenForPlayer(p.id) || '',
+    }));
 
     const game = new Game(gamePlayers, room.settings, onRoundStart);
-    game.startGame();
+    game.startGame(debugMode);
 
     this.games.set(roomCode, game);
     room.gameState = game.getState();
@@ -252,21 +251,11 @@ export class RoomManager {
       return null;
     }
 
-    const gamePlayers: GamePlayer[] = connectedPlayers.map((p) => {
-      // Find reconnect token for this player
-      let token = '';
-      for (const [t, data] of this.reconnectTokens.entries()) {
-        if (data.playerId === p.id) {
-          token = t;
-          break;
-        }
-      }
-      return {
-        id: p.id,
-        name: p.name,
-        reconnectToken: token,
-      };
-    });
+    const gamePlayers: GamePlayer[] = connectedPlayers.map((p) => ({
+      id: p.id,
+      name: p.name,
+      reconnectToken: this.getReconnectTokenForPlayer(p.id) || '',
+    }));
 
     const game = new Game(gamePlayers, room.settings, onRoundStart);
     game.startGame();
@@ -309,12 +298,14 @@ export class RoomManager {
     const room = this.rooms.get(tokenData.roomCode);
     if (!room) {
       this.reconnectTokens.delete(token);
+      this.playerToToken.delete(tokenData.playerId);
       return null;
     }
 
     const player = room.players.find((p) => p.id === tokenData.playerId);
     if (!player) {
       this.reconnectTokens.delete(token);
+      this.playerToToken.delete(tokenData.playerId);
       return null;
     }
 
@@ -337,8 +328,10 @@ export class RoomManager {
       game.updatePlayerId(oldPlayerId, newSocketId);
     }
 
-    // Update token mapping
+    // Update token mappings
     this.reconnectTokens.set(token, { playerId: newSocketId, roomCode: tokenData.roomCode });
+    this.playerToToken.delete(oldPlayerId);
+    this.playerToToken.set(newSocketId, token);
 
     return { room, game, oldPlayerId };
   }

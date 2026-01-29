@@ -110,6 +110,18 @@ const initialState: State = {
 let toastIdCounter = 0;
 let activityIdCounter = 0;
 
+const MAX_ACTIVITY_ENTRIES = 20;
+
+function addActivityEntry(
+  activityLog: ActivityLogEntry[],
+  message: string
+): ActivityLogEntry[] {
+  return [
+    { id: `activity-${++activityIdCounter}`, message, timestamp: Date.now() },
+    ...activityLog,
+  ].slice(0, MAX_ACTIVITY_ENTRIES);
+}
+
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'SET_PLAYER_NAME':
@@ -282,10 +294,7 @@ function reducer(state: State, action: Action): State {
     case 'ADD_ACTIVITY':
       return {
         ...state,
-        activityLog: [
-          { id: `activity-${++activityIdCounter}`, message: action.payload, timestamp: Date.now() },
-          ...state.activityLog,
-        ].slice(0, 20), // Keep max 20 entries
+        activityLog: addActivityEntry(state.activityLog, action.payload),
       };
 
     case 'SET_PENDING_ACTION':
@@ -300,10 +309,10 @@ function reducer(state: State, action: Action): State {
     case 'PLAYER_PASSED':
       return {
         ...state,
-        activityLog: [
-          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} passed with ${action.payload.roundScore} points`, timestamp: Date.now() },
-          ...state.activityLog,
-        ].slice(0, 20),
+        activityLog: addActivityEntry(
+          state.activityLog,
+          `${action.payload.playerName} passed with ${action.payload.roundScore} points`
+        ),
       };
 
     case 'PLAYER_BUSTED':
@@ -314,10 +323,7 @@ function reducer(state: State, action: Action): State {
           playerName: action.payload.playerName,
           duplicateCard: action.payload.duplicateCard,
         },
-        activityLog: [
-          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} busted!`, timestamp: Date.now() },
-          ...state.activityLog,
-        ].slice(0, 20),
+        activityLog: addActivityEntry(state.activityLog, `${action.payload.playerName} busted!`),
       };
 
     case 'CLEAR_BUST_INFO':
@@ -326,10 +332,10 @@ function reducer(state: State, action: Action): State {
     case 'PLAYER_FROZEN':
       return {
         ...state,
-        activityLog: [
-          { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} froze with ${action.payload.frozenScore} points`, timestamp: Date.now() },
-          ...state.activityLog,
-        ].slice(0, 20),
+        activityLog: addActivityEntry(
+          state.activityLog,
+          `${action.payload.playerName} froze with ${action.payload.frozenScore} points`
+        ),
       };
 
     case 'TOGGLE_SOUND':
@@ -349,6 +355,7 @@ interface GameContextType {
   joinRoom: (code: string) => void;
   leaveRoom: () => void;
   startGame: () => void;
+  startDebugGame: () => void;
   hit: () => void;
   pass: () => void;
   useSecondChance: (use: boolean) => void;
@@ -473,6 +480,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     emit('game:start');
   };
 
+  const startDebugGame = () => {
+    emit('game:startDebug');
+  };
+
   const hit = () => {
     dispatch({ type: 'SET_PENDING_ACTION', payload: true });
     emit('game:action', { action: 'hit' });
@@ -530,6 +541,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         joinRoom,
         leaveRoom,
         startGame,
+        startDebugGame,
         hit,
         pass,
         useSecondChance,
