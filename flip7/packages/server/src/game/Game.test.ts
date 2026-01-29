@@ -1027,4 +1027,120 @@ describe('Game', () => {
       }
     });
   });
+
+  describe('turn structure - one card per turn', () => {
+    // Bug #2: In Flip 7, each player can only draw one card per turn,
+    // then the turn passes to the next player.
+    // This is different from Blackjack-style where players draw as many as they want.
+
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should advance to next player after drawing one card', () => {
+      const firstPlayer = game.getCurrentPlayer()!;
+      const firstPlayerIndex = game.getState().currentPlayerIndex;
+
+      // Draw one card
+      const result = game.hit(firstPlayer.id);
+
+      // If the draw didn't cause bust/freeze/pass, turn should advance
+      if (result && !result.isBust && !result.triggersFreeze && firstPlayer.status === 'active') {
+        const newPlayerIndex = game.getState().currentPlayerIndex;
+        expect(newPlayerIndex).not.toBe(firstPlayerIndex);
+
+        // The previous player should no longer be able to hit
+        const secondHitResult = game.hit(firstPlayer.id);
+        expect(secondHitResult).toBeNull();
+      }
+    });
+
+    it('should not allow same player to draw multiple cards in a row (unless flip three)', () => {
+      // Play through multiple turns and verify the turn rotates
+      const turnSequence: string[] = [];
+
+      for (let i = 0; i < 9; i++) {
+        // 3 players * 3 rounds
+        const currentPlayer = game.getCurrentPlayer();
+        if (!currentPlayer || currentPlayer.status !== 'active') break;
+
+        turnSequence.push(currentPlayer.id);
+
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        // Handle special cases
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          // Turn advances on bust anyway
+          continue;
+        }
+      }
+
+      // Check that turns rotate properly (no consecutive same player unless bust/freeze)
+      for (let i = 1; i < turnSequence.length; i++) {
+        // In proper Flip 7 rules, consecutive entries should be different players
+        // (except in edge cases like all other players being inactive)
+        const prev = turnSequence[i - 1];
+        const curr = turnSequence[i];
+
+        // Count active players at this point
+        const activePlayers = game
+          .getState()
+          .players.filter((p) => p.status === 'active');
+
+        if (activePlayers.length > 1) {
+          expect(curr).not.toBe(prev);
+        }
+      }
+    });
+
+    it('should cycle through all players before returning to first player', () => {
+      const playerIds = game.getState().players.map((p) => p.id);
+      const seenPlayers = new Set<string>();
+
+      // Draw one card for each player
+      for (let i = 0; i < playerIds.length; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (!currentPlayer || currentPlayer.status !== 'active') break;
+
+        seenPlayers.add(currentPlayer.id);
+
+        const result = game.hit(currentPlayer.id);
+        if (result?.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        }
+      }
+
+      // After one full round, we should have seen all active players
+      const activePlayers = game.getState().players.filter((p) => p.status === 'active');
+      for (const player of activePlayers) {
+        expect(seenPlayers.has(player.id)).toBe(true);
+      }
+    });
+
+    it('should return to first player after all players have drawn once', () => {
+      const initialPlayer = game.getCurrentPlayer()!;
+      const playerCount = game.getState().players.length;
+
+      // Each player draws one card
+      for (let i = 0; i < playerCount; i++) {
+        const currentPlayer = game.getCurrentPlayer();
+        if (!currentPlayer || currentPlayer.status !== 'active') break;
+
+        const result = game.hit(currentPlayer.id);
+        if (result?.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        }
+      }
+
+      // If initial player is still active, they should be current again
+      const initialPlayerStatus = game.getPlayer(initialPlayer.id)!.status;
+      if (initialPlayerStatus === 'active') {
+        const currentPlayer = game.getCurrentPlayer()!;
+        expect(currentPlayer.id).toBe(initialPlayer.id);
+      }
+    });
+  });
 });

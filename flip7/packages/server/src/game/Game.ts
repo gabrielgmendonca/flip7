@@ -44,6 +44,10 @@ export class Game {
     playerId: string;
     duplicateCard: Card;
   };
+  private pendingFreezeTarget?: {
+    playerId: string;
+    eligibleTargets: string[];
+  };
   private flipThreeRemaining: number = 0;
   private winnerId?: string;
   private roundStartTimeout?: ReturnType<typeof setTimeout>;
@@ -85,6 +89,7 @@ export class Game {
     this.deck.reset();
     this.discardPile = [];
     this.pendingSecondChance = undefined;
+    this.pendingFreezeTarget = undefined;
     this.flipThreeRemaining = 0;
 
     // Reset player states for new round
@@ -324,9 +329,27 @@ export class Game {
         this.advanceToNextPlayer();
       }
     } else if (result.triggersFreeze) {
-      player.status = 'frozen';
-      player.roundScore = this.calculatePlayerRoundScore(player);
-      this.advanceToNextPlayer();
+      // Get all active players as eligible freeze targets
+      const eligibleTargets = this.players
+        .filter((p) => p.status === 'active' && p.isConnected)
+        .map((p) => p.id);
+
+      if (eligibleTargets.length === 1) {
+        // Only one eligible target (must be self), freeze immediately
+        const target = this.getPlayer(eligibleTargets[0]);
+        if (target) {
+          target.status = 'frozen';
+          target.roundScore = this.calculatePlayerRoundScore(target);
+        }
+        this.advanceToNextPlayer();
+      } else {
+        // Multiple targets available, wait for selection
+        this.pendingFreezeTarget = {
+          playerId: player.id,
+          eligibleTargets,
+        };
+        this.phase = 'AWAITING_FREEZE_TARGET';
+      }
     } else if (result.triggersFlipThree) {
       this.flipThreeRemaining = 3;
       // Continue drawing for flip three
@@ -334,6 +357,9 @@ export class Game {
     } else if (player.status === 'passed') {
       // Got 7 unique numbers
       player.roundScore = this.calculatePlayerRoundScore(player);
+      this.advanceToNextPlayer();
+    } else {
+      // Normal successful draw - advance to next player (Flip 7 rules: one card per turn)
       this.advanceToNextPlayer();
     }
 
@@ -364,8 +390,27 @@ export class Game {
           this.phase = 'AWAITING_SECOND_CHANCE';
           return;
         } else if (result.triggersFreeze) {
-          player.status = 'frozen';
-          player.roundScore = this.calculatePlayerRoundScore(player);
+          // Get all active players as eligible freeze targets
+          const eligibleTargets = this.players
+            .filter((p) => p.status === 'active' && p.isConnected)
+            .map((p) => p.id);
+
+          if (eligibleTargets.length === 1) {
+            // Only one eligible target (must be self), freeze immediately
+            const target = this.getPlayer(eligibleTargets[0]);
+            if (target) {
+              target.status = 'frozen';
+              target.roundScore = this.calculatePlayerRoundScore(target);
+            }
+          } else {
+            // Multiple targets available, wait for selection
+            this.pendingFreezeTarget = {
+              playerId: player.id,
+              eligibleTargets,
+            };
+            this.phase = 'AWAITING_FREEZE_TARGET';
+            return;
+          }
           break;
         }
 
@@ -450,6 +495,48 @@ export class Game {
     player.status = 'passed';
     player.roundScore = this.calculatePlayerRoundScore(player);
     this.advanceToNextPlayer();
+
+    return true;
+  }
+
+  selectFreezeTarget(playerId: string, targetPlayerId: string): boolean {
+    if (this.phase !== 'AWAITING_FREEZE_TARGET') {
+      return false;
+    }
+
+    if (!this.pendingFreezeTarget || this.pendingFreezeTarget.playerId !== playerId) {
+      return false;
+    }
+
+    if (!this.pendingFreezeTarget.eligibleTargets.includes(targetPlayerId)) {
+      return false;
+    }
+
+    const target = this.getPlayer(targetPlayerId);
+    if (!target || target.status !== 'active') {
+      return false;
+    }
+
+    // Freeze the target player
+    target.status = 'frozen';
+    target.roundScore = this.calculatePlayerRoundScore(target);
+
+    // Clear pending state
+    this.pendingFreezeTarget = undefined;
+    this.phase = 'PLAYER_TURN';
+
+    // If we were in the middle of flip three, continue it
+    if (this.flipThreeRemaining > 0) {
+      const player = this.getPlayer(playerId);
+      if (player && player.status === 'active') {
+        this.executeFlipThree(player);
+      } else {
+        this.flipThreeRemaining = 0;
+        this.advanceToNextPlayer();
+      }
+    } else {
+      this.advanceToNextPlayer();
+    }
 
     return true;
   }
@@ -636,6 +723,7 @@ export class Game {
       round: this.round,
       settings: { ...this.settings },
       pendingSecondChance: this.pendingSecondChance,
+      pendingFreezeTarget: this.pendingFreezeTarget,
       flipThreeRemaining: this.flipThreeRemaining,
       winnerId: this.winnerId,
     };
