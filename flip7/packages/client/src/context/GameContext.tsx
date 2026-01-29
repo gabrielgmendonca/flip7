@@ -39,6 +39,7 @@ interface State {
   lastDrawnCard: { card: Card; playedCard: PlayedCard; isBust: boolean } | null;
   secondChancePrompt: { duplicateCard: Card } | null;
   freezeTargetPrompt: { eligibleTargets: string[] } | null;
+  bustInfo: { playerId: string; playerName: string; duplicateCard: Card } | null;
   showReconnectedToast: boolean;
   turnTimer: { startTime: number; timeoutSeconds: number } | null;
   toasts: ToastItem[];
@@ -79,8 +80,9 @@ type Action =
   | { type: 'SET_ROUND_END_DATA'; payload: RoundEndData }
   | { type: 'SHOW_ROUND_SUMMARY'; payload: boolean }
   | { type: 'PLAYER_PASSED'; payload: { playerId: string; playerName: string; roundScore: number } }
-  | { type: 'PLAYER_BUSTED'; payload: { playerId: string; playerName: string } }
+  | { type: 'PLAYER_BUSTED'; payload: { playerId: string; playerName: string; duplicateCard: Card } }
   | { type: 'PLAYER_FROZEN'; payload: { playerId: string; playerName: string; frozenScore: number } }
+  | { type: 'CLEAR_BUST_INFO' }
   | { type: 'TOGGLE_SOUND' };
 
 const initialState: State = {
@@ -94,6 +96,7 @@ const initialState: State = {
   lastDrawnCard: null,
   secondChancePrompt: null,
   freezeTargetPrompt: null,
+  bustInfo: null,
   showReconnectedToast: false,
   turnTimer: null,
   toasts: [],
@@ -306,11 +309,19 @@ function reducer(state: State, action: Action): State {
     case 'PLAYER_BUSTED':
       return {
         ...state,
+        bustInfo: {
+          playerId: action.payload.playerId,
+          playerName: action.payload.playerName,
+          duplicateCard: action.payload.duplicateCard,
+        },
         activityLog: [
           { id: `activity-${++activityIdCounter}`, message: `${action.payload.playerName} busted!`, timestamp: Date.now() },
           ...state.activityLog,
         ].slice(0, 20),
       };
+
+    case 'CLEAR_BUST_INFO':
+      return { ...state, bustInfo: null };
 
     case 'PLAYER_FROZEN':
       return {
@@ -349,6 +360,7 @@ interface GameContextType {
   removeToast: (id: string) => void;
   rematch: () => void;
   toggleSound: () => void;
+  clearBustInfo: () => void;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -410,7 +422,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'PLAYER_PASSED', payload: { ...data, playerName: getPlayerName(data.playerId) } });
       }),
       on('game:playerBusted', (data) => {
-        dispatch({ type: 'PLAYER_BUSTED', payload: { playerId: data.playerId, playerName: getPlayerName(data.playerId) } });
+        dispatch({ type: 'PLAYER_BUSTED', payload: { playerId: data.playerId, playerName: getPlayerName(data.playerId), duplicateCard: data.duplicateCard } });
       }),
       on('game:playerFrozen', (data) => {
         dispatch({ type: 'PLAYER_FROZEN', payload: { ...data, playerName: getPlayerName(data.playerId) } });
@@ -505,6 +517,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'TOGGLE_SOUND' });
   };
 
+  const clearBustInfo = () => {
+    dispatch({ type: 'CLEAR_BUST_INFO' });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -525,6 +541,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         removeToast,
         rematch,
         toggleSound,
+        clearBustInfo,
       }}
     >
       {children}

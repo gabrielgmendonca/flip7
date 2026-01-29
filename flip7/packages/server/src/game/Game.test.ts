@@ -595,7 +595,7 @@ describe('Game', () => {
 
       // Game should still be in a valid state
       const state = game.getState();
-      expect(['LOBBY', 'DEALING', 'PLAYER_TURN', 'AWAITING_SECOND_CHANCE', 'ROUND_END', 'GAME_END']).toContain(state.phase);
+      expect(['LOBBY', 'DEALING', 'PLAYER_TURN', 'AWAITING_SECOND_CHANCE', 'AWAITING_FREEZE_TARGET', 'ROUND_END', 'GAME_END']).toContain(state.phase);
     });
   });
 
@@ -712,6 +712,151 @@ describe('Game', () => {
     });
   });
 
+  describe('freeze target selection (Bug #1 regression)', () => {
+    // Bug #1: Freeze card was incorrectly forcing the player who draws it to freeze themselves.
+    // Expected: Player should choose an active player (including themselves) to freeze.
+
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should enter AWAITING_FREEZE_TARGET phase when freeze card is drawn with multiple active players', () => {
+      // When a freeze card is drawn and multiple players are active,
+      // the game should wait for target selection
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a freeze or run out of attempts
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const state = game.getState();
+          // Check if we're in AWAITING_FREEZE_TARGET or player was auto-frozen
+          // (auto-freeze happens when there's only one eligible target)
+          const activePlayers = state.players.filter(
+            (p) => p.status === 'active' && p.isConnected
+          );
+
+          if (activePlayers.length > 0) {
+            // If there were multiple active players, we should be awaiting target
+            expect(state.phase).toBe('AWAITING_FREEZE_TARGET');
+            expect(state.pendingFreezeTarget).toBeDefined();
+            expect(state.pendingFreezeTarget!.playerId).toBe(currentPlayer.id);
+            expect(state.pendingFreezeTarget!.eligibleTargets.length).toBeGreaterThanOrEqual(1);
+          }
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should allow selecting another player as freeze target', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until we get a freeze
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const state = game.getState();
+          if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+            // Find another player to freeze (not self)
+            const otherTargets = state.pendingFreezeTarget.eligibleTargets.filter(
+              (id) => id !== currentPlayer.id
+            );
+
+            if (otherTargets.length > 0) {
+              const targetId = otherTargets[0];
+              const success = game.selectFreezeTarget(currentPlayer.id, targetId);
+              expect(success).toBe(true);
+
+              // Target should be frozen
+              const target = game.getPlayer(targetId)!;
+              expect(target.status).toBe('frozen');
+
+              // Original player should NOT be frozen
+              const original = game.getPlayer(currentPlayer.id)!;
+              expect(original.status).not.toBe('frozen');
+            }
+          }
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should reject freeze target selection from wrong player', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const state = game.getState();
+          if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+            // Try to select target as a different player
+            const wrongPlayer = players.find((p) => p.id !== currentPlayer.id)!;
+            const targetId = state.pendingFreezeTarget.eligibleTargets[0];
+
+            const success = game.selectFreezeTarget(wrongPlayer.id, targetId);
+            expect(success).toBe(false);
+          }
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should reject selecting non-eligible target', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.triggersFreeze) {
+          const state = game.getState();
+          if (state.phase === 'AWAITING_FREEZE_TARGET') {
+            // Try to select a non-existent player
+            const success = game.selectFreezeTarget(currentPlayer.id, 'non-existent-player');
+            expect(success).toBe(false);
+          }
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        } else if (result.isBust) {
+          break;
+        }
+      }
+    });
+
+    it('should return false when not in AWAITING_FREEZE_TARGET phase', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+      const result = game.selectFreezeTarget(currentPlayer.id, 'player-2');
+      expect(result).toBe(false);
+    });
+  });
+
   describe('bust mechanics', () => {
     beforeEach(() => {
       game.startGame();
@@ -752,6 +897,96 @@ describe('Game', () => {
           const player = game.getPlayer(currentPlayer.id)!;
           expect(player.roundScore).toBe(0);
           break;
+        }
+      }
+    });
+  });
+
+  describe('bust card shown (Bug #4)', () => {
+    // Bug #4: When a player busts, the duplicate card that caused the bust
+    // should be displayed to the user so they understand why they busted.
+
+    beforeEach(() => {
+      game.startGame();
+    });
+
+    it('should include duplicateCard in DrawResult when player busts', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // Keep hitting until bust
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust) {
+          // The duplicate card should be included in the result
+          expect(result.duplicateCard).toBeDefined();
+          expect(result.duplicateCard).not.toBeNull();
+
+          // The duplicate card should be a number card (only number cards can cause busts)
+          expect(isNumberCard(result.duplicateCard!)).toBe(true);
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        }
+      }
+    });
+
+    it('should have duplicateCard match the drawn card that caused bust', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      for (let i = 0; i < 50; i++) {
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust) {
+          // duplicateCard should be the same as the card that was drawn
+          expect(result.duplicateCard).toBeDefined();
+          expect(result.duplicateCard!.id).toBe(result.card.id);
+          expect(result.duplicateCard!.type).toBe(result.card.type);
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
+        }
+      }
+    });
+
+    it('should not include duplicateCard when draw is successful', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      // The first draw should typically not be a bust (unless extremely unlucky)
+      const result = game.hit(currentPlayer.id);
+
+      if (result && !result.isBust) {
+        expect(result.duplicateCard).toBeUndefined();
+      }
+    });
+
+    it('should show the card value that caused the bust', () => {
+      const currentPlayer = game.getCurrentPlayer()!;
+
+      for (let i = 0; i < 50; i++) {
+        const player = game.getPlayer(currentPlayer.id)!;
+        const result = game.hit(currentPlayer.id);
+        if (!result) break;
+
+        if (result.isBust && isNumberCard(result.duplicateCard!)) {
+          // The duplicate card's value should match a card that was already in the player's hand
+          const duplicateValue = result.duplicateCard!.value;
+
+          // At least one card in the player's hand before bust should have had this value
+          // (Note: cards are discarded on bust, but we can verify the duplicate card has a valid value)
+          expect(duplicateValue).toBeGreaterThanOrEqual(0);
+          expect(duplicateValue).toBeLessThanOrEqual(12);
+          break;
+        }
+
+        if (result.isBust && result.hasSecondChance) {
+          game.useSecondChance(currentPlayer.id, true);
         }
       }
     });

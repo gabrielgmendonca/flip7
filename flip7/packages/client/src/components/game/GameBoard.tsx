@@ -5,6 +5,7 @@ import { PlayerArea } from './PlayerArea';
 import { Scoreboard } from './Scoreboard';
 import { SecondChanceModal } from './SecondChanceModal';
 import { FreezeTargetModal } from './FreezeTargetModal';
+import { BustModal } from './BustModal';
 import { GameOverModal } from './GameOverModal';
 import { TurnTimer } from './TurnTimer';
 import { ActivityLog } from './ActivityLog';
@@ -18,7 +19,7 @@ import './HelpModal.css';
 
 export function GameBoard() {
   const { state, dispatch, hit, pass, leaveRoom, toggleSound } = useGame();
-  const { gameState, playerId, secondChancePrompt, freezeTargetPrompt, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
+  const { gameState, playerId, secondChancePrompt, freezeTargetPrompt, bustInfo, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
   const { playSound } = useSound(soundEnabled);
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -185,6 +186,13 @@ export function GameBoard() {
       </button>
 
       {secondChancePrompt && <SecondChanceModal duplicateCard={secondChancePrompt.duplicateCard} />}
+      {bustInfo && (
+        <BustModal
+          playerName={bustInfo.playerName}
+          duplicateCard={bustInfo.duplicateCard}
+          isMe={bustInfo.playerId === playerId}
+        />
+      )}
       {freezeTargetPrompt && (
         <FreezeTargetModal
           eligibleTargets={freezeTargetPrompt.eligibleTargets}
