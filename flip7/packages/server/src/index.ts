@@ -31,6 +31,10 @@ const io = new Server<
     origin: process.env.CLIENT_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
     methods: ['GET', 'POST'],
   },
+  // Render-friendly WebSocket settings
+  transports: ['websocket', 'polling'],
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
 const roomManager = new RoomManager();

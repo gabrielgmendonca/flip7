@@ -14,18 +14,23 @@ export function useSocket() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
+    console.log('Connecting to socket server:', SOCKET_URL);
     const socket: TypedSocket = io(SOCKET_URL, {
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      // Force WebSocket first, fallback to polling
+      transports: ['websocket', 'polling'],
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
       setIsConnected(true);
-      console.log('Connected to server');
+      console.log('Connected to server, socket id:', socket.id);
 
       // Try to reconnect to previous session
       const reconnectToken = localStorage.getItem('flip7_reconnect_token');
@@ -36,9 +41,25 @@ export function useSocket() {
       }
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', (reason) => {
       setIsConnected(false);
-      console.log('Disconnected from server');
+      console.log('Disconnected from server, reason:', reason);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error.message);
+    });
+
+    socket.io.on('reconnect', (attempt) => {
+      console.log('Socket reconnected after', attempt, 'attempts');
+    });
+
+    socket.io.on('reconnect_attempt', (attempt) => {
+      console.log('Socket reconnection attempt', attempt);
+    });
+
+    socket.io.on('reconnect_error', (error) => {
+      console.error('Socket reconnection error:', error.message);
     });
 
     return () => {
@@ -50,8 +71,11 @@ export function useSocket() {
     event: E,
     ...args: Parameters<ClientToServerEvents[E]>
   ) => {
-    if (socketRef.current) {
+    if (socketRef.current && socketRef.current.connected) {
+      console.log(`Emitting ${event}`, args.length > 0 ? args : '(no args)');
       socketRef.current.emit(event, ...args);
+    } else {
+      console.error(`Failed to emit ${event}: socket not connected (exists: ${!!socketRef.current}, connected: ${socketRef.current?.connected})`);
     }
   }, []);
 
