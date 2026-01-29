@@ -5,6 +5,7 @@ import { PlayerArea } from './PlayerArea';
 import { Scoreboard } from './Scoreboard';
 import { SecondChanceModal } from './SecondChanceModal';
 import { FreezeTargetModal } from './FreezeTargetModal';
+import { FlipThreeTargetModal } from './FlipThreeTargetModal';
 import { BustModal } from './BustModal';
 import { GameOverModal } from './GameOverModal';
 import { TurnTimer } from './TurnTimer';
@@ -19,7 +20,7 @@ import './HelpModal.css';
 
 export function GameBoard() {
   const { state, dispatch, hit, pass, leaveRoom, toggleSound } = useGame();
-  const { gameState, playerId, secondChancePrompt, freezeTargetPrompt, bustInfo, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
+  const { gameState, playerId, secondChancePrompt, freezeTargetPrompt, flipThreeTargetPrompt, bustInfo, lastDrawnCard, turnTimer, activityLog, pendingAction, roundEndData, showRoundSummary, soundEnabled } = state;
   const { playSound } = useSound(soundEnabled);
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
@@ -151,6 +152,9 @@ export function GameBoard() {
             {gameState.phase === 'AWAITING_FREEZE_TARGET' && (
               <span>Choose a player to freeze...</span>
             )}
+            {gameState.phase === 'AWAITING_FLIP_THREE_TARGET' && (
+              <span>Choose a player for Flip Three...</span>
+            )}
           </div>
 
           {canAct && (
@@ -196,6 +200,13 @@ export function GameBoard() {
       {freezeTargetPrompt && (
         <FreezeTargetModal
           eligibleTargets={freezeTargetPrompt.eligibleTargets}
+          players={gameState.players}
+          currentPlayerId={playerId}
+        />
+      )}
+      {flipThreeTargetPrompt && (
+        <FlipThreeTargetModal
+          eligibleTargets={flipThreeTargetPrompt.eligibleTargets}
           players={gameState.players}
           currentPlayerId={playerId}
         />

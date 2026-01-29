@@ -48,6 +48,10 @@ export class Game {
     playerId: string;
     eligibleTargets: string[];
   };
+  private pendingFlipThreeTarget?: {
+    playerId: string;
+    eligibleTargets: string[];
+  };
   private pendingFlipThreeFreeze?: {
     playerId: string;
   };
@@ -139,6 +143,38 @@ export class Game {
     return 'pending';
   }
 
+  /**
+   * Attempt to resolve Flip Three by selecting a target.
+   * If only one eligible target, executes immediately and returns 'resolved'.
+   * If multiple targets, sets up pending state and returns 'pending'.
+   * Returns 'none' if no eligible targets.
+   */
+  private tryResolveFlipThree(playerId: string): 'resolved' | 'pending' | 'none' {
+    const eligibleTargets = this.getEligibleFreezeTargets(); // Same eligible targets as freeze
+
+    if (eligibleTargets.length === 0) {
+      return 'none';
+    }
+
+    if (eligibleTargets.length === 1) {
+      // Only one target - execute immediately
+      const target = this.getPlayer(eligibleTargets[0]);
+      if (target) {
+        this.flipThreeRemaining = 3;
+        this.executeFlipThree(target);
+      }
+      return 'resolved';
+    }
+
+    // Multiple targets - wait for selection
+    this.pendingFlipThreeTarget = {
+      playerId,
+      eligibleTargets,
+    };
+    this.phase = 'AWAITING_FLIP_THREE_TARGET';
+    return 'pending';
+  }
+
   // ========== Game Flow ==========
 
   startGame(debugMode: boolean = false): void {
@@ -156,6 +192,7 @@ export class Game {
     this.discardPile = [];
     this.pendingSecondChance = undefined;
     this.pendingFreezeTarget = undefined;
+    this.pendingFlipThreeTarget = undefined;
     this.pendingFlipThreeFreeze = undefined;
     this.pendingDealIndex = undefined;
     this.flipThreeRemaining = 0;
@@ -444,9 +481,12 @@ export class Game {
         this.advanceToNextPlayer();
       }
     } else if (result.triggersFlipThree) {
-      this.flipThreeRemaining = 3;
-      // Continue drawing for flip three
-      this.executeFlipThree(player);
+      // Per official rules: player who draws Flip Three chooses target (any active player)
+      const flipThreeResult = this.tryResolveFlipThree(player.id);
+      if (flipThreeResult !== 'pending') {
+        this.advanceToNextPlayer();
+      }
+      // If pending, wait for target selection
     } else if (player.status === 'passed') {
       // Got 7 unique numbers
       player.roundScore = calculateRoundScore(player.cards);
@@ -637,6 +677,40 @@ export class Game {
     return true;
   }
 
+  selectFlipThreeTarget(playerId: string, targetPlayerId: string): boolean {
+    if (this.phase !== 'AWAITING_FLIP_THREE_TARGET') {
+      return false;
+    }
+
+    if (!this.pendingFlipThreeTarget || this.pendingFlipThreeTarget.playerId !== playerId) {
+      return false;
+    }
+
+    if (!this.pendingFlipThreeTarget.eligibleTargets.includes(targetPlayerId)) {
+      return false;
+    }
+
+    const target = this.getPlayer(targetPlayerId);
+    if (!target || target.status !== 'active') {
+      return false;
+    }
+
+    // Clear pending state
+    this.pendingFlipThreeTarget = undefined;
+    this.phase = 'PLAYER_TURN';
+
+    // Execute Flip Three on the selected target
+    this.flipThreeRemaining = 3;
+    this.executeFlipThree(target);
+
+    // After flip three completes, advance to next player if needed
+    if (this.phase === 'PLAYER_TURN') {
+      this.advanceToNextPlayer();
+    }
+
+    return true;
+  }
+
   private advanceToNextPlayer(): void {
     // Check if round is over
     const activePlayers = this.players.filter(
@@ -781,6 +855,7 @@ export class Game {
       settings: { ...this.settings },
       pendingSecondChance: this.pendingSecondChance,
       pendingFreezeTarget: this.pendingFreezeTarget,
+      pendingFlipThreeTarget: this.pendingFlipThreeTarget,
       flipThreeRemaining: this.flipThreeRemaining,
       winnerId: this.winnerId,
     };

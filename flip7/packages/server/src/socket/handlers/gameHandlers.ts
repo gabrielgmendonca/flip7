@@ -161,10 +161,21 @@ export function registerGameHandlers(
       }
 
       if (result.triggersFlipThree) {
-        io.to(roomCode).emit('game:flipThreeStart', {
-          playerId: socket.id,
-          cardsRemaining: 3,
-        });
+        const updatedState = game.getState();
+        if (updatedState.pendingFlipThreeTarget) {
+          // Player needs to select a Flip Three target
+          io.to(roomCode).emit('game:flipThreeTargetPrompt', {
+            playerId: socket.id,
+            eligibleTargets: updatedState.pendingFlipThreeTarget.eligibleTargets,
+          });
+        } else {
+          // Auto-targeted (only one eligible target)
+          io.to(roomCode).emit('game:flipThreeStart', {
+            playerId: socket.id,
+            targetPlayerId: socket.id, // Will be the only target
+            cardsRemaining: 3,
+          });
+        }
       }
     } else if (action === 'pass') {
       const success = game.pass(socket.id);
@@ -268,6 +279,50 @@ export function registerGameHandlers(
     io.to(roomCode).emit('game:playerFrozen', {
       playerId: targetPlayerId,
       frozenScore: targetPlayer?.roundScore || 0,
+    });
+
+    // Send updated game state
+    const newGameState = game.getState() as PublicGameState;
+    io.to(roomCode).emit('game:stateUpdate', { gameState: newGameState });
+
+    // Check for round end or game end
+    broadcastRoundAndGameEnd(io, roomCode, newGameState);
+
+    // Send next turn start if game continues
+    if (newGameState.phase === 'PLAYER_TURN') {
+      emitTurnStart(io, roomCode, game);
+    }
+  });
+
+  socket.on('game:selectFlipThreeTarget', ({ targetPlayerId }) => {
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) {
+      return;
+    }
+
+    const game = roomManager.getGame(roomCode);
+    if (!game) {
+      return;
+    }
+
+    const gameState = game.getState();
+    if (!gameState.pendingFlipThreeTarget || gameState.pendingFlipThreeTarget.playerId !== socket.id) {
+      socket.emit('room:error', { message: 'No Flip Three target selection pending for you.' });
+      return;
+    }
+
+    const success = game.selectFlipThreeTarget(socket.id, targetPlayerId);
+
+    if (!success) {
+      socket.emit('room:error', { message: 'Unable to select Flip Three target.' });
+      return;
+    }
+
+    const targetPlayer = game.getPlayer(targetPlayerId);
+    io.to(roomCode).emit('game:flipThreeStart', {
+      playerId: socket.id,
+      targetPlayerId: targetPlayerId,
+      cardsRemaining: 3,
     });
 
     // Send updated game state

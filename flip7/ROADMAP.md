@@ -81,10 +81,18 @@
 
 ## Known Issues
 
-### Action Card Targeting
-- [ ] **Flip Three**: Should allow player to choose any active player as target (currently only affects self)
-- [ ] **Freeze**: Should allow player to choose any active player as target
-- [ ] Per official rules: "Action cards can be played on **any active player** including yourself. If you are the only active player in the round, you **must** play the Action card on yourself."
+### Action Card Targeting (FIXED)
+- [x] **Flip Three**: Now allows player to choose any active player as target
+- [x] **Freeze**: Already allowed targeting any active player
+- [x] Per official rules: "Action cards can be played on **any active player** including yourself. If you are the only active player in the round, you **must** play the Action card on yourself."
+
+### UI Issues
+- [ ] **Target selection modal**: Toast/modal appears to all players, but only the player who drew the action card should see it
+- [ ] **Turn timeout**: Turn timeout does not work (timer shows but no auto-action)
+
+### Game Flow Issues
+- [ ] **Game ends after 3 rounds**: Game seems to end after 3 rounds instead of when someone reaches 200 points
+- [ ] **Deck shuffling**: Deck appears to be shuffled too often (per official rules, cards are not reshuffled between rounds until deck runs out)
 
 ---
 

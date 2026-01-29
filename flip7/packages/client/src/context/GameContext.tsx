@@ -39,6 +39,7 @@ interface State {
   lastDrawnCard: { card: Card; playedCard: PlayedCard; isBust: boolean } | null;
   secondChancePrompt: { duplicateCard: Card } | null;
   freezeTargetPrompt: { eligibleTargets: string[] } | null;
+  flipThreeTargetPrompt: { eligibleTargets: string[] } | null;
   bustInfo: { playerId: string; playerName: string; duplicateCard: Card } | null;
   showReconnectedToast: boolean;
   turnTimer: { startTime: number; timeoutSeconds: number } | null;
@@ -65,6 +66,8 @@ type Action =
   | { type: 'CLEAR_SECOND_CHANCE' }
   | { type: 'FREEZE_TARGET_PROMPT'; payload: { eligibleTargets: string[] } }
   | { type: 'CLEAR_FREEZE_TARGET' }
+  | { type: 'FLIP_THREE_TARGET_PROMPT'; payload: { eligibleTargets: string[] } }
+  | { type: 'CLEAR_FLIP_THREE_TARGET' }
   | { type: 'RECONNECTED'; payload: { room: PublicRoom; gameState: PublicGameState | null; playerId: string } }
   | { type: 'LEFT_ROOM' }
   | { type: 'SET_ERROR'; payload: string }
@@ -96,6 +99,7 @@ const initialState: State = {
   lastDrawnCard: null,
   secondChancePrompt: null,
   freezeTargetPrompt: null,
+  flipThreeTargetPrompt: null,
   bustInfo: null,
   showReconnectedToast: false,
   turnTimer: null,
@@ -227,6 +231,15 @@ function reducer(state: State, action: Action): State {
 
     case 'CLEAR_FREEZE_TARGET':
       return { ...state, freezeTargetPrompt: null };
+
+    case 'FLIP_THREE_TARGET_PROMPT':
+      return {
+        ...state,
+        flipThreeTargetPrompt: { eligibleTargets: action.payload.eligibleTargets },
+      };
+
+    case 'CLEAR_FLIP_THREE_TARGET':
+      return { ...state, flipThreeTargetPrompt: null };
 
     case 'CLEAR_DRAWN_CARD':
       return { ...state, lastDrawnCard: null };
@@ -360,6 +373,7 @@ interface GameContextType {
   pass: () => void;
   useSecondChance: (use: boolean) => void;
   selectFreezeTarget: (targetPlayerId: string) => void;
+  selectFlipThreeTarget: (targetPlayerId: string) => void;
   kickPlayer: (playerId: string) => void;
   updateSettings: (settings: Partial<GameSettings>) => void;
   isConnected: boolean;
@@ -424,6 +438,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       on('game:secondChancePrompt', (data) => dispatch({ type: 'SECOND_CHANCE_PROMPT', payload: data })),
       on('game:secondChanceUsed', () => dispatch({ type: 'CLEAR_SECOND_CHANCE' })),
       on('game:freezeTargetPrompt', (data) => dispatch({ type: 'FREEZE_TARGET_PROMPT', payload: data })),
+      on('game:flipThreeTargetPrompt', (data) => dispatch({ type: 'FLIP_THREE_TARGET_PROMPT', payload: data })),
       on('game:turnStart', (data) => dispatch({ type: 'TURN_START', payload: data })),
       on('game:playerPassed', (data) => {
         dispatch({ type: 'PLAYER_PASSED', payload: { ...data, playerName: getPlayerName(data.playerId) } });
@@ -512,6 +527,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_FREEZE_TARGET' });
   };
 
+  const selectFlipThreeTarget = (targetPlayerId: string) => {
+    emit('game:selectFlipThreeTarget', { targetPlayerId });
+    dispatch({ type: 'CLEAR_FLIP_THREE_TARGET' });
+  };
+
   const kickPlayer = (playerId: string) => {
     emit('room:kick', { playerId });
   };
@@ -546,6 +566,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         pass,
         useSecondChance,
         selectFreezeTarget,
+        selectFlipThreeTarget,
         kickPlayer,
         updateSettings,
         isConnected,

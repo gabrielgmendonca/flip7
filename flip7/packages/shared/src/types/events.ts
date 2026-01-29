@@ -17,6 +17,7 @@ export interface ClientToServerEvents {
   'game:action': (data: { action: 'hit' | 'pass' }) => void;
   'game:useSecondChance': (data: { use: boolean }) => void;
   'game:selectFreezeTarget': (data: { targetPlayerId: string }) => void;
+  'game:selectFlipThreeTarget': (data: { targetPlayerId: string }) => void;
   'game:rematch': () => void;
 
   // Connection events
@@ -51,7 +52,8 @@ export interface ServerToClientEvents {
   'game:secondChancePrompt': (data: { playerId: string; duplicateCard: Card }) => void;
   'game:secondChanceUsed': (data: { playerId: string; discardedCard: Card }) => void;
   'game:freezeTargetPrompt': (data: { playerId: string; eligibleTargets: string[] }) => void;
-  'game:flipThreeStart': (data: { playerId: string; cardsRemaining: number }) => void;
+  'game:flipThreeTargetPrompt': (data: { playerId: string; eligibleTargets: string[] }) => void;
+  'game:flipThreeStart': (data: { playerId: string; targetPlayerId: string; cardsRemaining: number }) => void;
   'game:roundEnd': (data: {
     round: number;
     scores: { playerId: string; roundScore: number; totalScore: number }[];

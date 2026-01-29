@@ -11,17 +11,24 @@ function createPlayers(count: number): GamePlayer[] {
 }
 
 /**
- * Helper to resolve any pending freeze target selections during initial deal.
- * Per official rules, freeze target selection can happen during initial deal.
- * This helper auto-selects the first available target (typically self-freeze).
+ * Helper to resolve any pending action card target selections during initial deal.
+ * Per official rules, Freeze and Flip Three target selection can happen during initial deal.
+ * This helper auto-selects the first available target.
  */
 function resolveInitialDealFreezes(game: Game): void {
   let state = game.getState();
-  while (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
-    const { playerId, eligibleTargets } = state.pendingFreezeTarget;
-    // Auto-select first eligible target (often self)
-    game.selectFreezeTarget(playerId, eligibleTargets[0]);
+  let maxIterations = 20; // Prevent infinite loops
+  while (maxIterations-- > 0) {
     state = game.getState();
+    if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
+      const { playerId, eligibleTargets } = state.pendingFreezeTarget;
+      game.selectFreezeTarget(playerId, eligibleTargets[0]);
+    } else if (state.phase === 'AWAITING_FLIP_THREE_TARGET' && state.pendingFlipThreeTarget) {
+      const { playerId, eligibleTargets } = state.pendingFlipThreeTarget;
+      game.selectFlipThreeTarget(playerId, eligibleTargets[0]);
+    } else {
+      break;
+    }
   }
 }
 
@@ -458,6 +465,7 @@ describe('Game', () => {
 
       try {
         game.startGame();
+        resolveInitialDealFreezes(game);
 
         // Have all players pass to end the round
         for (let i = 0; i < 10; i++) {
@@ -478,6 +486,7 @@ describe('Game', () => {
 
         // Advance to next round
         vi.advanceTimersByTime(3000);
+        resolveInitialDealFreezes(game); // Resolve any action card targets in new round
 
         const stateAfterNewRound = game.getState();
 
@@ -713,7 +722,7 @@ describe('Game', () => {
       game.startGame();
     });
 
-    it('should mark player as frozen when freeze card is drawn', () => {
+    it('should mark player as frozen when freeze card is drawn and target selected', () => {
       const currentPlayer = game.getCurrentPlayer()!;
 
       // Keep hitting until we get a freeze or run out of attempts
@@ -722,6 +731,13 @@ describe('Game', () => {
         if (!result) break;
 
         if (result.triggersFreeze) {
+          // Per official rules: player chooses a target (can be themselves or another player)
+          const state = game.getState();
+          if (state.pendingFreezeTarget) {
+            // Multiple targets available - select the current player as target
+            game.selectFreezeTarget(currentPlayer.id, currentPlayer.id);
+          }
+          // Now check the player is frozen
           const player = game.getPlayer(currentPlayer.id)!;
           expect(player.status).toBe('frozen');
           break;
@@ -744,6 +760,11 @@ describe('Game', () => {
         if (!result) break;
 
         if (result.triggersFreeze) {
+          // Per official rules: player chooses a target
+          const state = game.getState();
+          if (state.pendingFreezeTarget) {
+            game.selectFreezeTarget(currentPlayer.id, currentPlayer.id);
+          }
           const player = game.getPlayer(currentPlayer.id)!;
           expect(typeof player.roundScore).toBe('number');
           break;
@@ -1568,6 +1589,13 @@ describe('Game', () => {
           if (state.phase === 'AWAITING_FREEZE_TARGET' && state.pendingFreezeTarget) {
             const { playerId, eligibleTargets } = state.pendingFreezeTarget;
             game.selectFreezeTarget(playerId, eligibleTargets[0]);
+          }
+        } else if (result.triggersFlipThree) {
+          // Handle Flip Three target selection if needed
+          const state = game.getState();
+          if (state.phase === 'AWAITING_FLIP_THREE_TARGET' && state.pendingFlipThreeTarget) {
+            const { playerId, eligibleTargets } = state.pendingFlipThreeTarget;
+            game.selectFlipThreeTarget(playerId, eligibleTargets[0]);
           }
         } else if (result.isBust) {
           // Turn advances on bust anyway
