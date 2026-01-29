@@ -1,39 +1,91 @@
-# Flip7 QoE Roadmap
+# Flip 7 - Development Roadmap
 
-Quality of Experience features for the game round screen.
+## Completed
 
-## High Impact / Low Effort
+### Deck Composition (Fixed)
+- [x] Number cards: 79 total (0×1, 1×1, 2×2, ... 12×12)
+- [x] Action cards: 9 total (3× Freeze, 3× Flip Three, 3× Second Chance)
+- [x] Modifier cards: 6 total (+2, +4, +6, +8, +10, x2)
+- [x] Total: 94 cards matching official rules
 
-- [x] **Turn timer** - Visual countdown bar using `turnTimeoutSeconds` (already in settings but not displayed)
-- [x] **Highlight newest card** - Animate/glow the most recently drawn card so it stands out (`isNew` flag already exists in state)
-- [x] **Keyboard shortcuts** - `H` for Hit, `P` for Pass when it's your turn
-- [x] **Bust risk indicator** - Show which numbers in the deck would cause a bust (grayed-out numbers you already have)
-- [x] **Reconnection toast** - Notify player when they've reconnected ("Connection restored")
-- [x] **Leave game confirmation** - Modal to prevent accidental exits
-- [x] **Card hover effects** - Scale/glow on hover for interactive feel
-- [x] **Card tooltips** - Hover to see what special cards (x2, +10, Second Chance, Freeze) do
+### Core Game Mechanics (Implemented)
+- [x] Hit/Stay gameplay loop
+- [x] Bust on duplicate number cards
+- [x] Flip 7 bonus (+15 points for 7 unique numbers)
+- [x] Score calculation: Sum → x2 multiplier → add modifiers → Flip 7 bonus
+- [x] Win condition: First to 200 points
 
-## Medium Effort
+### Action Cards (Implemented)
+- [x] Freeze: Banks points and removes player from round
+- [x] Flip Three: Forces player to draw 3 cards
+- [x] Second Chance: Prevents bust by discarding duplicate
+- [x] Second Chance limit: Max 1 per player, extras given to others or discarded
+- [x] Freeze during Flip Three: Resolved after all 3 cards drawn
 
-- [x] **Target score progress** - Progress bar showing how close each player is to winning (200 points)
-- [x] **Flip 7 glow effect** - Pulse/glow the "Unique: 6/7" indicator when one card away from the bonus
-- [x] **Activity log** - Small feed showing recent actions ("Alice drew 5", "Bob passed", "Carol busted!")
-- [x] **Score change animation** - Floating "+15" when getting bonuses, show round score delta
-- [x] **Toast notification system** - Replace static error messages with dismissible toasts for all events
-- [x] **In-game help modal** - Quick rules reference accessible during gameplay
-- [x] **Pending action indicator** - Spinner on Hit/Pass buttons while server processes
-- [x] **Round summary modal** - Brief recap at round end showing who gained/lost what
-- [x] **Rematch button** - Quick restart with same players after game ends
+### Infrastructure
+- [x] Real-time multiplayer via Socket.io
+- [x] Room system with join codes
+- [x] Player reconnection handling
+- [x] Debug mode for testing with fewer players
+- [x] Comprehensive test suite (219 tests)
 
-## Higher Effort / Polish
+---
 
-- [x] **Round end celebration** - Confetti or visual effect for round winners
-- [x] **Sound effects** - Audio cues for draw, bust, pass, win
-- [x] **Player turn order** - Visual indicator showing turn sequence
-- [x] **Mobile landscape mode** - Optimize layout for horizontal phone orientation
+## Needs Verification
 
-## Technical Debt
+### Action Card Edge Cases
+- [ ] Verify: Flip Three stops early on Flip 7 achievement
+- [ ] Verify: Flip Three stops early on bust (without Second Chance)
+- [ ] Verify: Nested Flip Three cards during Flip Three resolution
+- [ ] Verify: Second Chance cards drawn during Flip Three are usable
 
-- [x] **Error boundary component** - Graceful fallback if app crashes
-- [x] **Form validation feedback** - Real-time validation on inputs
-- [x] **Scoreboard overlap fix** - Prevent overlap on smaller screens
+### Dealing Phase
+- [ ] Verify: Action cards during initial deal pause and resolve immediately
+- [ ] Verify: Deal continues from correct player after action resolution
+
+### Round/Game Flow
+- [ ] Verify: Cards are NOT shuffled back between rounds (discard pile separate)
+- [ ] Verify: Deck reshuffles only when empty, preserving cards in play
+- [ ] Verify: Dealer rotates left each round
+
+---
+
+## Future Enhancements
+
+### Gameplay
+- [ ] AI/Bot players for solo play or filling empty seats
+- [ ] Spectator mode
+- [ ] Game replays / history
+- [ ] Statistics tracking (games played, win rate, etc.)
+
+### UI/UX
+- [ ] Card animations for draw/discard
+- [ ] Sound effects
+- [ ] Visual feedback for Flip 7 achievement
+- [ ] Better mobile responsiveness
+- [ ] Dark mode
+
+### Social Features
+- [ ] Player profiles / accounts
+- [ ] Friends list
+- [ ] Private rooms with passwords
+- [ ] Chat during games
+
+### Technical
+- [ ] Persistent game state (resume interrupted games)
+- [ ] Rate limiting for game actions
+- [ ] Better error handling and user feedback
+- [ ] Performance optimization for larger player counts
+
+---
+
+## Known Issues
+
+*No known issues at this time. Report bugs via GitHub issues.*
+
+---
+
+## References
+
+- [Official Flip 7 Rules (Edition 3.1)](./RULES.md)
+- [Freeze Behavior Analysis](./packages/server/src/game/FREEZE_BEHAVIOR_ANALYSIS.md)
